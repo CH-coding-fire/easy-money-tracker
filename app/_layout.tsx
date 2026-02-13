@@ -38,6 +38,10 @@ export default function RootLayout() {
             options={{ presentation: 'modal', headerShown: true, title: 'Currency Settings' }}
           />
           <Stack.Screen
+            name="frequent-categories"
+            options={{ presentation: 'modal', headerShown: true, title: 'Frequent Categories' }}
+          />
+          <Stack.Screen
             name="edit-transaction"
             options={{ headerShown: false }}
           />

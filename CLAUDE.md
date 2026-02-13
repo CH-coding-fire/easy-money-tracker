@@ -96,66 +96,66 @@ Primary job-to-be-done: An app, that user can easy record expense and income, an
   - Data: Default category as below, each has a icon:
         Expense category:
           Food
-          Groceries / Restaurants / Coffee / Snacks / Delivery / Unclassified
+          Grocery / Restaurant / Coffee / Snack / Delivery / Unclassified
 
           Housing
-          Rent / Mortgage / Property Taxes / Insurance / Maintenance / Management Fees / Moving Expenses / Unclassified
+          Rent / Mortgage / Property Tax / Insurance / Maintenance / Management Fee / Moving Expense / Unclassified
 
-          Utilities
-          Home Internet / Mobile Plans / Water / Electricity / Gas / Trash / Heating / Unclassified
+          Utility
+          Home Internet / Mobile Plan / Water / Electricity / Gas / Trash / Heating / Unclassified
 
           Transportation
-          Public Transport / Taxi / Fuel / Maintenance / Insurance / Payments / Bikes / Parking / Tolls / Flights/Unclassified
+          Public Transport / Taxi / Fuel / Maintenance / Insurance / Payment / Bike / Parking / Toll / Flight / Unclassified
 
           Medical
-          General Practitioners / Specialists / Dentists / Pharmacists / Physiotherapists / Psychotherapists / Psychiatrists / Alternative Medicine Practitioners / Checkups / Unclassified
+          General Practitioner / Specialist / Dentist / Pharmacist / Physiotherapist / Psychotherapist / Psychiatrist / Alternative Medicine / Checkup / Unclassified
 
           Insurance
-          Life Insurance/Medical Insurance/Critical Illness Insurance/Unclassified
+          Life Insurance / Medical Insurance / Critical Illness Insurance / Unclassified
 
           Finance/Tax/Government
-          Foreign Exchange Fees / Transaction Fees / Taxes/Fines/Licenses/Unclassified
+          Foreign Exchange Fee / Transaction Fee / Tax / Fine / License / Unclassified
 
           Social
-          Drinks & Bars /Restaurants/ Gifts / Parties&Events/ Networking / Unclassified
+          Drink & Bar / Restaurant / Gift / Party & Event / Networking / Unclassified
 
           Love Life
-          Dates/Restaurants/Hotel/Gift/Partner Support/Adult Services/Sexual health
+          Date / Restaurant / Hotel / Gift / Partner Support / Adult Service / Sexual Health
 
           Education
-          Tuition (School) / Private Tutoring / Courses / Learning Materials / Certifications / Unclassified
+          Tuition (School) / Private Tutoring / Course / Learning Material / Certification / Unclassified
 
           Fitness/Health
-          Memberships / Classes / Coaching / Equipment / Supplements / Events/Unclassified
+          Membership / Class / Coaching / Equipment / Supplement / Event / Unclassified
 
-          Substances
-          Alcohol / Tobacco / Cannabis / Psychedelics / Stimulants / Unclassified
+          Substance
+          Alcohol / Tobacco / Cannabis / Psychedelic / Stimulant / Unclassified
 
           Entertainment
-          Streaming/Music/Gaming/Movies/Books/Hobbies/Outdoor/Gardening/Unclassified
+          Streaming / Music / Gaming / Movie / Book / Hobby / Outdoor / Gardening / Unclassified
 
           Shopping
-          Electronics/Kitchenware/stationery/Accessories/Home Decor/Merchandise/Tools/Unclassified
+          Electronic / Kitchenware / Stationery / Accessory / Home Decor / Merchandise / Tool / Unclassified
 
           Beauty
-          Makeup/Skincare/Haircare/Grooming/Beauty Tools/Treatments/Nails/Fragrance/Unclassified
+          Makeup / Skincare / Haircare / Grooming / Beauty Tool / Treatment / Nail / Fragrance / Unclassified
 
           Fashion
-          Clothing/Shoes/Bags/Accessories/Jewelry/Formalwear/Tailoring & Alterations/Laundry & Dry Cleaning/Unclassified
+          Clothing / Shoe / Bag / Accessory / Jewelry / Formalwear / Tailoring & Alteration / Laundry & Dry Cleaning / Unclassified
 
-          Digital Tools
-          Software/ AI Tools/ Cloud / VPN / Hosting / Unclassified
+          Digital Tool
+          Software / AI Tool / Cloud / VPN / Hosting / Unclassified
 
-          Services
-          Cleaning / Legal Services / Financial Services / Unclassified
+          Service
+          Cleaning / Legal Service / Financial Service / Unclassified
 
           Pet
-          Food/Veterinary care/Supplies/Grooming/Training/Toys/Insurance/Unclassified
+          Food / Veterinary Care / Supply / Grooming / Training / Toy / Insurance / Unclassified
 
-          Donations
+          Donation
 
           Family/Children
-          Education/Daycare/Extracurricular Activities/Gift/Supplies/Unclassified
+          Education / Daycare / Extracurricular Activity / Gift / Supply / Unclassified
 
           Unclassified
                     

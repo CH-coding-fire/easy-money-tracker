@@ -114,13 +114,29 @@ export function shiftDateRange(
       end.setDate(end.getDate() + diff * 7);
       return { start: formatISODate(start), end: formatISODate(end) };
     }
-    case 'this_month':
+    case 'this_month': {
+      // For "this month", always snap to full month boundaries (1st → last day).
+      // Shifting month number, then rebuild from scratch so we never lose
+      // the "last day of month" semantics after passing through short months.
+      const targetMonth = start.getMonth() + diff;
+      const targetYear = start.getFullYear();
+      const ms = new Date(targetYear, targetMonth, 1);
+      const me = new Date(targetYear, targetMonth + 1, 0); // last day of target month
+      return { start: formatISODate(ms), end: formatISODate(me) };
+    }
     case 'last_30': {
-      start.setMonth(start.getMonth() + diff);
-      end.setMonth(end.getMonth() + diff);
-      // handle month-end overflow
-      const me = new Date(end.getFullYear(), end.getMonth() + 1, 0);
-      if (end.getDate() > me.getDate()) end.setDate(me.getDate());
+      // Clamp day BEFORE calling setMonth to prevent JS Date overflow.
+      // e.g. Jan 31 → setMonth(1) would overflow to Mar 3 instead of Feb 28.
+      const newStartMonth = start.getMonth() + diff;
+      const lastDayOfStartTarget = new Date(start.getFullYear(), newStartMonth + 1, 0).getDate();
+      start.setDate(Math.min(start.getDate(), lastDayOfStartTarget));
+      start.setMonth(newStartMonth);
+
+      const newEndMonth = end.getMonth() + diff;
+      const lastDayOfEndTarget = new Date(end.getFullYear(), newEndMonth + 1, 0).getDate();
+      end.setDate(Math.min(end.getDate(), lastDayOfEndTarget));
+      end.setMonth(newEndMonth);
+
       return { start: formatISODate(start), end: formatISODate(end) };
     }
     case 'this_year':

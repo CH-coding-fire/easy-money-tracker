@@ -90,7 +90,7 @@ export function CategoryPicker({
       </TouchableOpacity>
 
       {/* Frequent category shortcuts — below the picker */}
-      {frequentCategories.length > 0 && (
+      {frequentCategories.length > 0 ? (
         <View style={styles.frequentRow}>
           {frequentCategories.map((path, i) => (
             <TouchableOpacity
@@ -121,6 +121,18 @@ export function CategoryPicker({
             </TouchableOpacity>
           )}
         </View>
+      ) : (
+        onEditFrequent && (
+          <View style={styles.emptyFrequentRow}>
+            <Text style={styles.emptyFrequentText}>
+              No frequent categories yet. Tap to add.
+            </Text>
+            <TouchableOpacity style={styles.emptyFrequentBtn} onPress={onEditFrequent}>
+              <Ionicons name="add-circle-outline" size={18} color="#1565C0" />
+              <Text style={styles.emptyFrequentBtnText}>Add Frequent</Text>
+            </TouchableOpacity>
+          </View>
+        )
       )}
 
       {/* Drill-down modal */}
@@ -225,6 +237,38 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.xs,
     paddingHorizontal: SPACING.sm,
     justifyContent: 'center',
+  },
+  emptyFrequentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: SPACING.sm,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    backgroundColor: '#F5F9FF',
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    borderColor: '#E3F2FD',
+    borderStyle: 'dashed',
+  },
+  emptyFrequentText: {
+    fontSize: FONT_SIZE.xs,
+    color: '#1565C0',
+    flex: 1,
+  },
+  emptyFrequentBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: SPACING.xs,
+    paddingHorizontal: SPACING.sm,
+    backgroundColor: '#E3F2FD',
+    borderRadius: BORDER_RADIUS.sm,
+  },
+  emptyFrequentBtnText: {
+    fontSize: FONT_SIZE.xs,
+    fontWeight: '600',
+    color: '#1565C0',
   },
   pickerButton: {
     flexDirection: 'row',

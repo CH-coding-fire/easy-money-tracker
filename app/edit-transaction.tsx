@@ -81,26 +81,15 @@ function EditTransactionScreen() {
     return transactions.find((t) => t.id === id) ?? null;
   }, [id, transactions]);
 
-  // If transaction not found, show error
-  if (!editingTx) {
-    return (
-      <ScreenContainer>
-        <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle-outline" size={48} color="#F44336" />
-          <Text style={styles.errorText}>Transaction not found</Text>
-          <Button title="Go Back" onPress={() => router.back()} size="md" />
-        </View>
-      </ScreenContainer>
-    );
-  }
-
-  // All state is initialized from the transaction being edited — completely independent
-  const [transactionType, setTransactionType] = useState<TransactionType>(editingTx.type);
-  const [selectedCurrency, setSelectedCurrency] = useState(editingTx.currency);
-  const [categoryPath, setCategoryPath] = useState<string[]>([...editingTx.categoryPath]);
-  const [selectedDate, setSelectedDate] = useState(parseLocalDate(editingTx.date));
+  // ALL hooks must be called unconditionally (React Rules of Hooks).
+  // Use safe defaults when editingTx is null; the early return below
+  // prevents the rest of the UI from rendering with wrong values.
+  const [transactionType, setTransactionType] = useState<TransactionType>(editingTx?.type ?? 'expense');
+  const [selectedCurrency, setSelectedCurrency] = useState(editingTx?.currency ?? settings.mainCurrency);
+  const [categoryPath, setCategoryPath] = useState<string[]>(editingTx ? [...editingTx.categoryPath] : []);
+  const [selectedDate, setSelectedDate] = useState(editingTx ? parseLocalDate(editingTx.date) : new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [isRecurring, setIsRecurring] = useState(editingTx.isRecurring);
+  const [isRecurring, setIsRecurring] = useState(editingTx?.isRecurring ?? false);
   const [currencyPickerVisible, setCurrencyPickerVisible] = useState(false);
   const [currencySearch, setCurrencySearch] = useState('');
 
@@ -120,9 +109,9 @@ function EditTransactionScreen() {
   } = useForm<TxFormData>({
     resolver: zodResolver(txSchema),
     defaultValues: {
-      amount: String(editingTx.amount),
-      title: editingTx.title ?? '',
-      description: editingTx.description ?? '',
+      amount: editingTx ? String(editingTx.amount) : '',
+      title: editingTx?.title ?? '',
+      description: editingTx?.description ?? '',
     },
   });
 
@@ -131,18 +120,19 @@ function EditTransactionScreen() {
 
   // Snapshot of original values for change detection
   const original = useMemo(() => ({
-    amount: editingTx.amount,
-    currency: editingTx.currency,
-    categoryPath: editingTx.categoryPath,
-    date: editingTx.date,
-    isRecurring: editingTx.isRecurring,
-    title: editingTx.title,
-    description: editingTx.description,
-    type: editingTx.type,
-  }), [editingTx.id]);
+    amount: editingTx?.amount ?? 0,
+    currency: editingTx?.currency ?? '',
+    categoryPath: editingTx?.categoryPath ?? [],
+    date: editingTx?.date ?? '',
+    isRecurring: editingTx?.isRecurring ?? false,
+    title: editingTx?.title,
+    description: editingTx?.description,
+    type: editingTx?.type ?? 'expense',
+  }), [editingTx?.id]);
 
-  // Check if form has changed
+  // Check if form has changed (must be before conditional return — Rules of Hooks)
   const hasChanges = useMemo(() => {
+    if (!editingTx) return false;
     const currentAmount = Number(formValues.amount) || 0;
     const currentDate = formatISODate(selectedDate);
 
@@ -156,7 +146,20 @@ function EditTransactionScreen() {
       (formValues.description || '') !== (original.description || '') ||
       transactionType !== original.type
     );
-  }, [formValues, selectedCurrency, categoryPath, selectedDate, isRecurring, transactionType, original]);
+  }, [editingTx, formValues, selectedCurrency, categoryPath, selectedDate, isRecurring, transactionType, original]);
+
+  // If transaction not found, show error (AFTER all hooks)
+  if (!editingTx) {
+    return (
+      <ScreenContainer>
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle-outline" size={48} color="#F44336" />
+          <Text style={styles.errorText}>Transaction not found</Text>
+          <Button title="Go Back" onPress={() => router.back()} size="md" />
+        </View>
+      </ScreenContainer>
+    );
+  }
 
   const categorySelected = categoryPath.length > 0;
   const canSave = categorySelected && hasChanges;

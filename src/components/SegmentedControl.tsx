@@ -58,9 +58,9 @@ const styles = StyleSheet.create({
   segmentActive: {
     backgroundColor: '#fff',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
     elevation: 2,
   },
   segmentActiveDisabled: {

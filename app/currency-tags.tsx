@@ -364,11 +364,11 @@ const styles = StyleSheet.create({
   orderItemActive: {
     backgroundColor: '#E3F2FD',
     borderColor: '#90CAF9',
-    elevation: 8,
+    elevation: 6,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
   },
   dragHandle: {
     paddingVertical: SPACING.xs,

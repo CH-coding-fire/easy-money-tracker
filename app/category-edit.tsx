@@ -177,7 +177,9 @@ function CategoryEditScreen() {
   const maxDepth = 3; // can't go deeper than L3
   const canDrill = depthLevel < maxDepth - 1;
 
-  // Memoized renderItem to prevent re-renders during drag animation
+  // renderItem for DraggableFlatList — includes all dependencies that the
+  // inner callbacks (openEditModal, drillInto, handleDelete) close over so
+  // that the rendered rows always use fresh state (drillStack, categories, etc.).
   const renderItem = useCallback(({ item, drag, isActive }: RenderItemParams<Category>) => (
     <View style={[
       styles.catCard,
@@ -218,7 +220,7 @@ function CategoryEditScreen() {
         </View>
       </View>
     </View>
-  ), [canDrill]);
+  ), [canDrill, drillStack, categories, catType, currentPath]);
 
   return (
     <ScreenContainer style={{ paddingTop: SPACING.sm }}>
@@ -410,11 +412,11 @@ const styles = StyleSheet.create({
   catCardActive: {
     backgroundColor: '#E3F2FD',
     borderColor: '#90CAF9',
-    elevation: 10,
+    elevation: 6,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
   },
   catRow: { flexDirection: 'row', alignItems: 'center' },
   dragHandle: {

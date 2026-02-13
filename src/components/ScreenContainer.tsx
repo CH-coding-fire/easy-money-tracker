@@ -7,9 +7,10 @@ interface ScreenContainerProps {
   children: React.ReactNode;
   style?: ViewStyle;
   padBottom?: boolean;
+  padTop?: boolean;
 }
 
-export function ScreenContainer({ children, style, padBottom = true }: ScreenContainerProps) {
+export function ScreenContainer({ children, style, padBottom = true, padTop = true }: ScreenContainerProps) {
   const insets = useSafeAreaInsets();
 
   return (
@@ -17,7 +18,7 @@ export function ScreenContainer({ children, style, padBottom = true }: ScreenCon
       style={[
         styles.container,
         {
-          paddingTop: insets.top + SPACING.sm,
+          paddingTop: padTop ? insets.top + SPACING.sm : 0,
           paddingBottom: padBottom ? insets.bottom + SPACING.sm : 0,
           paddingLeft: insets.left + SPACING.lg,
           paddingRight: insets.right + SPACING.lg,

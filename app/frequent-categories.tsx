@@ -118,66 +118,66 @@ function FrequentCategoriesScreen() {
   }
 
   return (
-    <ScreenContainer style={{ paddingTop: SPACING.sm }}>
-      {/* Type toggle */}
-      <SegmentedControl<TransactionType>
-        options={[
-          { label: 'Expense', value: 'expense' },
-          { label: 'Income', value: 'income' },
-        ]}
-        selected={catType}
-        onSelect={setCatType}
-      />
+    <ScreenContainer padTop={false}>
+      {/* Fixed header: Type toggle */}
+      <View style={styles.header}>
+        <SegmentedControl<TransactionType>
+          options={[
+            { label: 'Expense', value: 'expense' },
+            { label: 'Income', value: 'income' },
+          ]}
+          selected={catType}
+          onSelect={setCatType}
+        />
 
+        {/* Selected frequent categories */}
+        <Text style={styles.sectionLabel}>
+          Frequent Categories
+        </Text>
+        <Text style={styles.sectionHint}>
+          These appear as quick-pick tags in the Add screen.
+        </Text>
+
+        {frequentList.length > 0 ? (
+          <View style={styles.chipRow}>
+            {frequentList.map((path) => (
+              <View key={pathKey(path)} style={styles.chip}>
+                <Text style={styles.chipIcon}>{findIcon(path)}</Text>
+                <Text style={styles.chipLabel} numberOfLines={1}>
+                  {path[path.length - 1]}
+                </Text>
+                <TouchableOpacity
+                  style={styles.chipRemove}
+                  onPress={() => removeFrequent(path)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons name="close-circle" size={16} color="#F44336" />
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        ) : (
+          <View style={styles.emptyChips}>
+            <Text style={styles.emptyChipsText}>
+              No frequent categories yet. Tap categories below to add them.
+            </Text>
+          </View>
+        )}
+
+        {/* All categories header */}
+        <Text style={[styles.sectionLabel, { marginTop: SPACING.md }]}>
+          All Categories
+        </Text>
+        <Text style={styles.sectionHint}>
+          Tap to toggle as frequent. Shows full path for subcategories.
+        </Text>
+      </View>
+
+      {/* Scrollable category list */}
       <FlatList
         data={allFlat}
         keyExtractor={(item) => pathKey(item.path)}
         contentContainerStyle={styles.listContent}
-        ListHeaderComponent={
-          <>
-            {/* Selected frequent categories */}
-            <Text style={styles.sectionLabel}>
-              Frequent Categories
-            </Text>
-            <Text style={styles.sectionHint}>
-              These appear as quick-pick tags in the Add screen.
-            </Text>
-
-            {frequentList.length > 0 ? (
-              <View style={styles.chipRow}>
-                {frequentList.map((path) => (
-                  <View key={pathKey(path)} style={styles.chip}>
-                    <Text style={styles.chipIcon}>{findIcon(path)}</Text>
-                    <Text style={styles.chipLabel} numberOfLines={1}>
-                      {path[path.length - 1]}
-                    </Text>
-                    <TouchableOpacity
-                      style={styles.chipRemove}
-                      onPress={() => removeFrequent(path)}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <Ionicons name="close-circle" size={16} color="#F44336" />
-                    </TouchableOpacity>
-                  </View>
-                ))}
-              </View>
-            ) : (
-              <View style={styles.emptyChips}>
-                <Text style={styles.emptyChipsText}>
-                  No frequent categories yet. Tap categories below to add them.
-                </Text>
-              </View>
-            )}
-
-            {/* All categories header */}
-            <Text style={[styles.sectionLabel, { marginTop: SPACING.lg }]}>
-              All Categories
-            </Text>
-            <Text style={styles.sectionHint}>
-              Tap to toggle as frequent. Shows full path for subcategories.
-            </Text>
-          </>
-        }
         renderItem={({ item }) => {
           const selected = isFrequent(item.path);
           const depth = item.path.length - 1;
@@ -223,15 +223,22 @@ export default function FrequentCategoriesWithBoundary() {
 }
 
 const styles = StyleSheet.create({
+  header: {
+    paddingTop: SPACING.sm,
+    paddingBottom: SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    backgroundColor: '#fff',
+  },
   listContent: {
-    paddingBottom: SPACING.xxxl,
+    paddingBottom: SPACING.lg,
   },
   sectionLabel: {
     fontSize: FONT_SIZE.md,
     fontWeight: '700',
     color: '#222',
     marginBottom: SPACING.xs,
-    marginTop: SPACING.md,
+    marginTop: SPACING.sm,
   },
   sectionHint: {
     fontSize: FONT_SIZE.xs,
