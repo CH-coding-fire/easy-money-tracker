@@ -19,7 +19,6 @@ import { useSettings } from '../../src/hooks/useSettings';
 import { useFxRates } from '../../src/hooks/useFx';
 import { useUIStore } from '../../src/store/uiStore';
 import { StatsMode, DateRangePreset, Transaction } from '../../src/types';
-import { getCurrencySymbol } from '../../src/constants/currencies';
 import { SPACING, FONT_SIZE, BORDER_RADIUS } from '../../src/constants/spacing';
 import {
   getDateRange,
@@ -186,8 +185,6 @@ function StatisticsScreen() {
       });
   }, [transactions, statsMode, dateRange, statsCurrency, fxCache]);
 
-  const sym = getCurrencySymbol(statsCurrency);
-
   return (
     <ScreenContainer>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -235,7 +232,7 @@ function StatisticsScreen() {
 
         {/* Currency */}
         <Text style={styles.currencyInfo}>
-          Currency: {sym} {statsCurrency}
+          Currency: {statsCurrency}
         </Text>
 
         {/* Total */}
@@ -245,7 +242,7 @@ function StatisticsScreen() {
               Total {statsMode === 'expense_pie' ? 'Expense' : 'Income'}
             </Text>
             <Text style={[styles.totalAmount, { color: statsMode === 'expense_pie' ? '#F44336' : '#4CAF50' }]}>
-              {sym}{total.toFixed(2)}
+              {statsCurrency} {total.toFixed(2)}
             </Text>
           </Card>
         )}
@@ -275,7 +272,7 @@ function StatisticsScreen() {
                     donut
                     innerRadius={40}
                     centerLabelComponent={() => (
-                      <Text style={styles.pieCenter}>{sym}{total.toFixed(0)}</Text>
+                      <Text style={styles.pieCenter}>{statsCurrency} {total.toFixed(0)}</Text>
                     )}
                     showText={false}
                   />
@@ -295,7 +292,7 @@ function StatisticsScreen() {
                         <Text style={styles.legendText} numberOfLines={1}>
                           {d.text}
                         </Text>
-                        <Text style={styles.legendValue}>{sym}{d.value.toFixed(0)}</Text>
+                        <Text style={styles.legendValue}>{statsCurrency} {d.value.toFixed(0)}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>

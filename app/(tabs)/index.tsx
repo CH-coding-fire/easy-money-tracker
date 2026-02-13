@@ -29,7 +29,6 @@ import { useSettings } from '../../src/hooks/useSettings';
 import { useAddTransaction, useUpdateTransaction, useTransactions } from '../../src/hooks/useTransactions';
 import { useUIStore } from '../../src/store/uiStore';
 import { TransactionType, Transaction } from '../../src/types';
-import { getCurrencySymbol } from '../../src/constants/currencies';
 import { SPACING, FONT_SIZE } from '../../src/constants/spacing';
 import { todayISO, nowISO, parseLocalDate, formatISODate } from '../../src/utils/dateHelpers';
 import { logger } from '../../src/utils/logger';
@@ -179,7 +178,7 @@ function AddTransactionScreen() {
                 onPress={() => router.push('/currency-tags')}
               >
                 <Text style={styles.currencyText}>
-                  {getCurrencySymbol(selectedCurrency)} {selectedCurrency}
+                  {selectedCurrency}
                 </Text>
               </TouchableOpacity>
               <View style={styles.amountInput}>

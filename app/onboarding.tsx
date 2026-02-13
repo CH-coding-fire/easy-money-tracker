@@ -17,7 +17,7 @@ import { Card } from '../src/components/Card';
 import { ErrorBoundary } from '../src/components/ErrorBoundary';
 import { useSettings, useSaveSettings } from '../src/hooks/useSettings';
 import { LANGUAGES } from '../src/constants/languages';
-import { ALL_CURRENCIES, getCurrencySymbol } from '../src/constants/currencies';
+import { ALL_CURRENCIES } from '../src/constants/currencies';
 import { SPACING, FONT_SIZE, BORDER_RADIUS } from '../src/constants/spacing';
 import { logger } from '../src/utils/logger';
 
@@ -106,7 +106,9 @@ function OnboardingScreen() {
                   style={[styles.optionRow, selectedLang === item.code && styles.optionRowActive]}
                   onPress={() => setSelectedLang(item.code)}
                 >
-                  <Text style={styles.optionText}>{item.label} {item.nativeName}</Text>
+                  <Text style={styles.optionText}>
+                    {item.label === item.nativeName ? item.label : `${item.label} ${item.nativeName}`}
+                  </Text>
                   {selectedLang === item.code && <Text style={styles.check}>✓</Text>}
                 </TouchableOpacity>
               )}
@@ -133,7 +135,7 @@ function OnboardingScreen() {
             >
               <Text style={styles.dropdownText}>
                 {mainCurrencyInfo
-                  ? `${mainCurrencyInfo.symbol}  ${mainCurrencyInfo.code} — ${mainCurrencyInfo.name}`
+                  ? `${mainCurrencyInfo.code} — ${mainCurrencyInfo.name}`
                   : 'Select currency'}
               </Text>
               <Text style={styles.dropdownChevron}>▼</Text>
@@ -160,7 +162,7 @@ function OnboardingScreen() {
                     styles.secChipText,
                     secondaryCurrencies.includes(c.code) && styles.secChipTextActive,
                   ]}>
-                    {c.symbol} {c.code}
+                    {c.code}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -259,7 +261,6 @@ function OnboardingScreen() {
                     setShowCurrencyDropdown(false);
                   }}
                 >
-                  <Text style={styles.currencyRowSymbol}>{item.symbol}</Text>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.currencyRowCode}>{item.code}</Text>
                     <Text style={styles.currencyRowName}>{item.name}</Text>

@@ -181,6 +181,9 @@ Primary job-to-be-done: An app, that user can easy record expense and income, an
     - Settings
   - Control
     - 1st, is the language selection, it should support all major langauge, such as English (US/UK/AU), Spanish, French, German, Italian, Portuguese (BR), Japanese, Korean, Chinese (Simplified/Traditional), Cantonese (HK), Hindi, Arabic, Russian, Dutch, Swedish, Polish
+      - **Language Display Format**: Each language should display both English name and native name (e.g., "Chinese (Simplified) 中文 (简体)", "Spanish Español")
+      - **Exception**: If the English name equals the native name (like "English (US) English (US)"), only display once to avoid redundancy
+      - **Implementation**: Use conditional rendering: `{item.label === item.nativeName ? item.label : `${item.label} ${item.nativeName}`}`
     - 2rd, is import and export session, it is for user when they change to a new phone, I assume it should be a  easy-money-tracker-backup.json, which consist of all data, including records, categories. 
 
 - Screen F: First time user
@@ -188,6 +191,7 @@ Primary job-to-be-done: An app, that user can easy record expense and income, an
     - Help first-time user navigate and have init settings
   - Control
     - Ask user the language they prefer.
+      - Display format: Show both English and native names (see Screen E for implementation details)
     - Ask user, what is their main currency, and secondary currency they often use.
     - Educate user, that they can
       - Use the default category, but at the same time edit their own category. 
@@ -214,6 +218,11 @@ Primary job-to-be-done: An app, that user can easy record expense and income, an
   - secondaryCurrencies: string[]
   - weekStartsOn: "monday" | "sunday"
   - fxCache: { lastUpdatedAt: string; base: string; rates: Record<string, number> }
+
+- Language object (for UI display):
+  - code: string (e.g., "zh-CN", "en-US")
+  - label: string (English name, e.g., "Chinese (Simplified)")
+  - nativeName: string (Native name, e.g., "中文 (简体)")
 
 3) Navigation (must match exactly)
 - Tab or main routes:

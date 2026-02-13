@@ -15,7 +15,6 @@ import { ErrorBoundary } from '../../src/components/ErrorBoundary';
 import { useTransactions, useDeleteTransaction } from '../../src/hooks/useTransactions';
 import { useUIStore } from '../../src/store/uiStore';
 import { Transaction } from '../../src/types';
-import { getCurrencySymbol } from '../../src/constants/currencies';
 import { SPACING, FONT_SIZE, BORDER_RADIUS } from '../../src/constants/spacing';
 import { logger } from '../../src/utils/logger';
 
@@ -66,7 +65,7 @@ function EditRecordsScreen() {
   function handleDelete(tx: Transaction) {
     Alert.alert(
       'Delete Transaction',
-      `Delete ${tx.type} of ${getCurrencySymbol(tx.currency)}${tx.amount}?`,
+      `Delete ${tx.type} of ${tx.currency} ${tx.amount}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -89,7 +88,7 @@ function EditRecordsScreen() {
           <View style={styles.txInfo}>
             <View style={styles.txHeader}>
               <Text style={[styles.txAmount, { color: isExpense ? '#F44336' : '#4CAF50' }]}>
-                {isExpense ? '-' : '+'}{getCurrencySymbol(item.currency)}{item.amount.toFixed(2)}
+                {isExpense ? '-' : '+'}{item.currency} {item.amount.toFixed(2)}
               </Text>
               <Text style={styles.txDate}>{item.date}</Text>
             </View>

@@ -211,7 +211,9 @@ function SettingsScreen() {
                   ]}
                   onPress={() => handleLanguageSelect(item.code)}
                 >
-                  <Text style={styles.langText}>{item.label} {item.nativeName}</Text>
+                  <Text style={styles.langText}>
+                    {item.label === item.nativeName ? item.label : `${item.label} ${item.nativeName}`}
+                  </Text>
                   {settings.language === item.code && (
                     <Text style={styles.langCheck}>✓</Text>
                   )}
