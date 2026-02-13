@@ -106,7 +106,7 @@ function OnboardingScreen() {
                   style={[styles.optionRow, selectedLang === item.code && styles.optionRowActive]}
                   onPress={() => setSelectedLang(item.code)}
                 >
-                  <Text style={styles.optionText}>{item.label}</Text>
+                  <Text style={styles.optionText}>{item.label} {item.nativeName}</Text>
                   {selectedLang === item.code && <Text style={styles.check}>✓</Text>}
                 </TouchableOpacity>
               )}
