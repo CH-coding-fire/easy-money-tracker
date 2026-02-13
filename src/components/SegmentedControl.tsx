@@ -6,12 +6,14 @@ interface SegmentedControlProps<T extends string> {
   options: { label: string; value: T }[];
   selected: T;
   onSelect: (value: T) => void;
+  disabled?: boolean;
 }
 
 export function SegmentedControl<T extends string>({
   options,
   selected,
   onSelect,
+  disabled = false,
 }: SegmentedControlProps<T>) {
   return (
     <View style={styles.container}>
@@ -20,10 +22,15 @@ export function SegmentedControl<T extends string>({
         return (
           <TouchableOpacity
             key={opt.value}
-            onPress={() => onSelect(opt.value)}
-            style={[styles.segment, isActive && styles.segmentActive]}
+            onPress={() => !disabled && onSelect(opt.value)}
+            style={[
+              styles.segment,
+              isActive && styles.segmentActive,
+              disabled && isActive && styles.segmentActiveDisabled,
+            ]}
             accessibilityLabel={opt.label}
             accessibilityRole="button"
+            disabled={disabled}
           >
             <Text style={[styles.label, isActive && styles.labelActive]}>
               {opt.label}
@@ -44,7 +51,7 @@ const styles = StyleSheet.create({
   },
   segment: {
     flex: 1,
-    paddingVertical: SPACING.sm,
+    paddingVertical: SPACING.xs,
     alignItems: 'center',
     borderRadius: BORDER_RADIUS.md - 2,
   },
@@ -55,6 +62,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
+  },
+  segmentActiveDisabled: {
+    shadowOpacity: 0,
+    elevation: 0,
   },
   label: {
     fontSize: FONT_SIZE.sm,

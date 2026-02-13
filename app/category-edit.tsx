@@ -2,23 +2,29 @@ import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
-  FlatList,
-  TouchableOpacity,
   StyleSheet,
   Alert,
   TextInput,
   Modal,
 } from 'react-native';
+// CRITICAL: Use gesture-handler's TouchableOpacity inside DraggableFlatList
+// RN's TouchableOpacity conflicts with gesture-handler and breaks drag
+import { TouchableOpacity } from 'react-native-gesture-handler';
+import DraggableFlatList, {
+  RenderItemParams,
+} from 'react-native-draggable-flatlist';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { generateUUID } from '../src/utils/uuid';
 import { ScreenContainer } from '../src/components/ScreenContainer';
 import { SegmentedControl } from '../src/components/SegmentedControl';
 import { Button } from '../src/components/Button';
-import { Card } from '../src/components/Card';
 import { ErrorBoundary } from '../src/components/ErrorBoundary';
+import { useQueryClient } from '@tanstack/react-query';
 import { useCategories, useSaveCategories } from '../src/hooks/useCategories';
-import { Category, TransactionType } from '../src/types';
+import { Category, TransactionType, AppData } from '../src/types';
 import { SPACING, FONT_SIZE, BORDER_RADIUS } from '../src/constants/spacing';
 import { logger } from '../src/utils/logger';
+import { useUIStore } from '../src/store/uiStore';
 
 const TAG = 'CategoryEditScreen';
 
@@ -31,6 +37,8 @@ const ICON_OPTIONS = [
 function CategoryEditScreen() {
   const categories = useCategories();
   const saveMutation = useSaveCategories();
+  const queryClient = useQueryClient();
+  const { showToast } = useUIStore();
 
   const [catType, setCatType] = useState<TransactionType>('expense');
   const [drillStack, setDrillStack] = useState<{ items: Category[]; path: string[] }[]>([]);
@@ -57,8 +65,7 @@ function CategoryEditScreen() {
     if (cat.children && cat.children.length > 0) {
       setDrillStack([...drillStack, { items: cat.children, path: [...currentPath, cat.name] }]);
     } else {
-      // No children = Level 3 or leaf, can't drill deeper
-      Alert.alert('No subcategories', `${cat.name} has no subcategories.`);
+      showToast(`${cat.name} has no subcategories`, 'info');
     }
   }
 
@@ -86,7 +93,7 @@ function CategoryEditScreen() {
 
   function handleSaveCategory() {
     if (!editName.trim()) {
-      Alert.alert('Error', 'Category name cannot be empty');
+      showToast('Category name cannot be empty', 'error');
       return;
     }
 
@@ -132,7 +139,6 @@ function CategoryEditScreen() {
   }
 
   function refreshDrillStack(items: Category[]) {
-    // Rebuild drill stack from current path
     const newStack: { items: Category[]; path: string[] }[] = [];
     let current = items;
     for (const name of currentPath) {
@@ -147,12 +153,75 @@ function CategoryEditScreen() {
     setDrillStack(newStack);
   }
 
+  const handleDragEnd = useCallback(({ data: newData }: { data: Category[] }) => {
+    const expense = structuredClone(categories.expense);
+    const income = structuredClone(categories.income);
+    const target = catType === 'expense' ? expense : income;
+    const arr = findParentArray(target, currentPath);
+    // Replace contents in-place with the new order
+    arr.length = 0;
+    arr.push(...newData);
+    logger.info(TAG, 'Categories reordered via drag', { path: currentPath, count: newData.length });
+
+    // Optimistically update React Query cache BEFORE async save
+    queryClient.setQueryData(['appData'], (old: AppData | undefined) => {
+      if (!old) return old;
+      return { ...old, categories: { expense, income } };
+    });
+
+    saveAll(expense, income);
+    refreshDrillStack(catType === 'expense' ? expense : income);
+  }, [categories, catType, currentPath, queryClient]);
+
   const depthLevel = drillStack.length;
   const maxDepth = 3; // can't go deeper than L3
   const canDrill = depthLevel < maxDepth - 1;
 
+  // Memoized renderItem to prevent re-renders during drag animation
+  const renderItem = useCallback(({ item, drag, isActive }: RenderItemParams<Category>) => (
+    <View style={[
+      styles.catCard,
+      isActive && styles.catCardActive,
+    ]}>
+      <View style={styles.catRow}>
+        {/* Drag handle — long press to drag */}
+        <TouchableOpacity
+          onLongPress={drag}
+          delayLongPress={150}
+          disabled={isActive}
+          style={styles.dragHandle}
+          activeOpacity={0.5}
+        >
+          <Ionicons name="menu" size={20} color={isActive ? '#2196F3' : '#bbb'} />
+        </TouchableOpacity>
+        <Text style={styles.catIcon}>{item.icon ?? '📁'}</Text>
+        <View style={styles.catInfo}>
+          <Text style={styles.catName}>{item.name}</Text>
+          {item.children && (
+            <Text style={styles.catCount}>
+              {item.children.length} subcategories
+            </Text>
+          )}
+        </View>
+        <View style={styles.catActions}>
+          <TouchableOpacity style={styles.actionBtn} onPress={() => openEditModal(item)}>
+            <Ionicons name="create-outline" size={20} color="#666" />
+          </TouchableOpacity>
+          {canDrill && item.children !== undefined && (
+            <TouchableOpacity style={styles.actionBtn} onPress={() => drillInto(item)}>
+              <Ionicons name="folder-open-outline" size={20} color="#666" />
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity style={styles.actionBtn} onPress={() => handleDelete(item)}>
+            <Ionicons name="trash-outline" size={20} color="#F44336" />
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  ), [canDrill]);
+
   return (
-    <ScreenContainer>
+    <ScreenContainer style={{ paddingTop: SPACING.sm }}>
       {/* Type toggle */}
       <SegmentedControl<TransactionType>
         options={[
@@ -193,43 +262,22 @@ function CategoryEditScreen() {
       {/* Back button */}
       {drillStack.length > 0 && (
         <TouchableOpacity style={styles.backBtn} onPress={goBack}>
-          <Text style={styles.backText}>← Back</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Ionicons name="chevron-back" size={18} color="#2196F3" />
+            <Text style={styles.backText}>Back</Text>
+          </View>
         </TouchableOpacity>
       )}
 
-      {/* Category list */}
-      <FlatList
+      {/* Category list — draggable */}
+      <DraggableFlatList
         data={currentItems}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <Card style={styles.catCard}>
-            <View style={styles.catRow}>
-              <Text style={styles.catIcon}>{item.icon ?? '📁'}</Text>
-              <View style={styles.catInfo}>
-                <Text style={styles.catName}>{item.name}</Text>
-                {item.children && (
-                  <Text style={styles.catCount}>
-                    {item.children.length} subcategories
-                  </Text>
-                )}
-              </View>
-              <View style={styles.catActions}>
-                <TouchableOpacity style={styles.actionBtn} onPress={() => openEditModal(item)}>
-                  <Text style={styles.actionText}>✏️</Text>
-                </TouchableOpacity>
-                {canDrill && item.children !== undefined && (
-                  <TouchableOpacity style={styles.actionBtn} onPress={() => drillInto(item)}>
-                    <Text style={styles.actionText}>📂</Text>
-                  </TouchableOpacity>
-                )}
-                <TouchableOpacity style={styles.actionBtn} onPress={() => handleDelete(item)}>
-                  <Text style={[styles.actionText, { color: '#F44336' }]}>🗑️</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </Card>
-        )}
+        onDragEnd={handleDragEnd}
+        renderItem={renderItem}
+        containerStyle={styles.listContainer}
         contentContainerStyle={styles.list}
+        dragItemOverflow={true}
         ListEmptyComponent={
           <View style={styles.empty}>
             <Text style={styles.emptyText}>No categories yet</Text>
@@ -348,16 +396,40 @@ const styles = StyleSheet.create({
   breadcrumbActive: { color: '#222', fontWeight: '700' },
   backBtn: { marginTop: SPACING.sm, marginBottom: SPACING.xs },
   backText: { fontSize: FONT_SIZE.md, color: '#2196F3', fontWeight: '600' },
-  list: { paddingVertical: SPACING.sm },
-  catCard: { marginBottom: SPACING.sm },
+  listContainer: { flex: 1, backgroundColor: 'transparent' },
+  list: { paddingTop: SPACING.sm, paddingBottom: SPACING.xs },
+  catCard: {
+    backgroundColor: '#fff',
+    borderRadius: BORDER_RADIUS.md,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    marginBottom: SPACING.sm,
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
+  },
+  catCardActive: {
+    backgroundColor: '#E3F2FD',
+    borderColor: '#90CAF9',
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+  },
   catRow: { flexDirection: 'row', alignItems: 'center' },
-  catIcon: { fontSize: 28, marginRight: SPACING.md },
+  dragHandle: {
+    paddingVertical: SPACING.xs,
+    paddingHorizontal: SPACING.sm,
+    marginLeft: -SPACING.xs,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  catIcon: { fontSize: 24, marginRight: SPACING.md },
   catInfo: { flex: 1 },
   catName: { fontSize: FONT_SIZE.md, fontWeight: '600', color: '#222' },
   catCount: { fontSize: FONT_SIZE.xs, color: '#888', marginTop: 2 },
   catActions: { flexDirection: 'row', gap: SPACING.xs },
   actionBtn: { padding: SPACING.xs },
-  actionText: { fontSize: 18 },
   empty: { alignItems: 'center', paddingVertical: SPACING.xxxl },
   emptyText: { fontSize: FONT_SIZE.md, color: '#999' },
   addRow: { paddingVertical: SPACING.md },

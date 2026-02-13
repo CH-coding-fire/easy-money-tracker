@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { ScreenContainer } from '../src/components/ScreenContainer';
 import { Button } from '../src/components/Button';
 import { Card } from '../src/components/Card';
@@ -29,13 +30,15 @@ function OnboardingScreen() {
   const saveMutation = useSaveSettings();
   const insets = useSafeAreaInsets();
 
-  const [step, setStep] = useState(0); // 0=lang, 1=currency, 2=education
+  const [step, setStep] = useState(0); // 0=lang, 1=currency, 2=preferences, 3=education
   const [selectedLang, setSelectedLang] = useState(settings.language);
   const [selectedCurrency, setSelectedCurrency] = useState(settings.mainCurrency);
   const [secondaryCurrencies, setSecondaryCurrencies] = useState<string[]>(settings.secondaryCurrencies);
+  const [selectedWeekStart, setSelectedWeekStart] = useState<'monday' | 'sunday'>(settings.weekStartsOn);
 
-  // Currency dropdown state
+  // Currency picker state
   const [showCurrencyDropdown, setShowCurrencyDropdown] = useState(false);
+  const [showSecondaryPicker, setShowSecondaryPicker] = useState(false);
   const [currencySearch, setCurrencySearch] = useState('');
 
   const filteredCurrencies = currencySearch.trim()
@@ -47,7 +50,7 @@ function OnboardingScreen() {
     : ALL_CURRENCIES;
 
   function nextStep() {
-    if (step < 2) {
+    if (step < 3) {
       setStep(step + 1);
     } else {
       // Complete onboarding — navigate only AFTER save succeeds
@@ -58,11 +61,12 @@ function OnboardingScreen() {
           mainCurrency: selectedCurrency,
           secondaryCurrencies,
           frequentCurrencies: [selectedCurrency, ...secondaryCurrencies.slice(0, 2)],
+          weekStartsOn: selectedWeekStart,
           onboardingComplete: true,
         },
         {
           onSuccess: () => {
-            logger.info(TAG, 'Onboarding complete', { lang: selectedLang, currency: selectedCurrency });
+            logger.info(TAG, 'Onboarding complete', { lang: selectedLang, currency: selectedCurrency, weekStartsOn: selectedWeekStart });
             router.replace('/(tabs)');
           },
         }
@@ -92,7 +96,7 @@ function OnboardingScreen() {
       >
         {/* Progress dots */}
         <View style={styles.progressRow}>
-          {[0, 1, 2].map((i) => (
+          {[0, 1, 2, 3].map((i) => (
             <View key={i} style={[styles.dot, step === i && styles.dotActive]} />
           ))}
         </View>
@@ -100,7 +104,7 @@ function OnboardingScreen() {
         {/* Step 0: Language */}
         {step === 0 && (
           <View style={styles.stepContainer}>
-            <Text style={styles.emoji}>🌍</Text>
+            <Ionicons name="globe-outline" size={56} color="#2196F3" style={{ marginBottom: SPACING.md }} />
             <Text style={styles.title}>Welcome to Easy Money Tracker!</Text>
             <Text style={styles.subtitle}>Choose your language</Text>
 
@@ -115,7 +119,7 @@ function OnboardingScreen() {
                   <Text style={styles.optionText}>
                     {item.label === item.nativeName ? item.label : `${item.label} ${item.nativeName}`}
                   </Text>
-                  {selectedLang === item.code && <Text style={styles.check}>✓</Text>}
+                  {selectedLang === item.code && <Ionicons name="checkmark" size={20} color="#2196F3" />}
                 </TouchableOpacity>
               )}
               style={styles.optionList}
@@ -127,48 +131,74 @@ function OnboardingScreen() {
         {/* Step 1: Currency */}
         {step === 1 && (
           <View style={styles.stepContainer}>
-            <Text style={styles.emoji}>💰</Text>
+            <Ionicons name="wallet-outline" size={56} color="#2196F3" style={{ marginBottom: SPACING.md }} />
             <Text style={styles.title}>Set Your Currency</Text>
 
-            {/* Main currency — dropdown selector */}
-            <Text style={styles.sectionLabel}>Main currency</Text>
+            {/* Main currency — dropdown */}
+            <Text style={styles.sectionLabel}>Main Currency</Text>
             <TouchableOpacity
-              style={styles.dropdownBtn}
+              style={styles.currencyDropdown}
               onPress={() => {
                 setCurrencySearch('');
                 setShowCurrencyDropdown(true);
               }}
             >
-              <Text style={styles.dropdownText}>
-                {mainCurrencyInfo
-                  ? `${mainCurrencyInfo.code} — ${mainCurrencyInfo.name}`
-                  : 'Select currency'}
-              </Text>
-              <Text style={styles.dropdownChevron}>▼</Text>
+              <View style={styles.currencyDropdownContent}>
+                <Text style={styles.currencyDropdownSymbol}>
+                  {mainCurrencyInfo?.symbol ?? '?'}
+                </Text>
+                <View>
+                  <Text style={styles.currencyDropdownCode}>{selectedCurrency}</Text>
+                  <Text style={styles.currencyDropdownName}>{mainCurrencyInfo?.name ?? ''}</Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-down" size={20} color="#666" />
             </TouchableOpacity>
 
-            {/* Secondary currencies — multi-select chips */}
+            {/* Secondary currencies — dropdown */}
             <Text style={[styles.sectionLabel, { marginTop: SPACING.xl }]}>
-              Secondary currencies (optional)
+              Secondary Currencies
             </Text>
             <Text style={styles.sectionHint}>
-              Tap to toggle. These will appear as quick-switch options.
+              Optional. These appear as quick-switch tags in Add &amp; Statistics screens.
             </Text>
-            <View style={styles.secondaryRow}>
-              {ALL_CURRENCIES.filter((c) => c.code !== selectedCurrency).map((c) => (
+            <TouchableOpacity
+              style={styles.currencyDropdown}
+              onPress={() => {
+                setCurrencySearch('');
+                setShowSecondaryPicker(true);
+              }}
+            >
+              <View style={styles.currencyDropdownContent}>
+                <Ionicons name="add-circle-outline" size={22} color="#2196F3" />
+                <Text style={styles.addCurrencyText}>
+                  {secondaryCurrencies.length > 0
+                    ? `${secondaryCurrencies.length} selected`
+                    : 'Add Currency'}
+                </Text>
+              </View>
+              <Ionicons name="chevron-down" size={20} color="#666" />
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Step 2: Preferences */}
+        {step === 2 && (
+          <View style={styles.stepContainer}>
+            <Ionicons name="settings-outline" size={56} color="#FF9800" style={{ marginBottom: SPACING.md }} />
+            <Text style={styles.title}>Set Your Preferences</Text>
+            <Text style={styles.subtitle}>Customize how you view your data</Text>
+
+            <Text style={styles.sectionLabel}>Week Starts On</Text>
+            <View style={styles.weekRow}>
+              {(['monday', 'sunday'] as const).map((day) => (
                 <TouchableOpacity
-                  key={c.code}
-                  style={[
-                    styles.secChip,
-                    secondaryCurrencies.includes(c.code) && styles.secChipActive,
-                  ]}
-                  onPress={() => toggleSecondary(c.code)}
+                  key={day}
+                  style={[styles.weekBtn, selectedWeekStart === day && styles.weekBtnActive]}
+                  onPress={() => setSelectedWeekStart(day)}
                 >
-                  <Text style={[
-                    styles.secChipText,
-                    secondaryCurrencies.includes(c.code) && styles.secChipTextActive,
-                  ]}>
-                    {c.code}
+                  <Text style={[styles.weekBtnText, selectedWeekStart === day && styles.weekBtnTextActive]}>
+                    {day.charAt(0).toUpperCase() + day.slice(1)}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -176,15 +206,15 @@ function OnboardingScreen() {
           </View>
         )}
 
-        {/* Step 2: Education */}
-        {step === 2 && (
+        {/* Step 3: Education */}
+        {step === 3 && (
           <View style={styles.stepContainer}>
-            <Text style={styles.emoji}>✨</Text>
+            <Ionicons name="checkmark-circle-outline" size={56} color="#4CAF50" style={{ marginBottom: SPACING.md }} />
             <Text style={styles.title}>You're All Set!</Text>
             <Text style={styles.subtitle}>Here's what you can do</Text>
 
             <Card style={styles.featureCard}>
-              <Text style={styles.featureIcon}>💰</Text>
+              <Ionicons name="wallet-outline" size={32} color="#2196F3" style={{ marginBottom: SPACING.sm }} />
               <Text style={styles.featureTitle}>Track Expenses & Income</Text>
               <Text style={styles.featureDesc}>
                 Quick-add with category shortcuts, multi-level categories, and recurring transactions.
@@ -192,7 +222,7 @@ function OnboardingScreen() {
             </Card>
 
             <Card style={styles.featureCard}>
-              <Text style={styles.featureIcon}>📊</Text>
+              <Ionicons name="stats-chart-outline" size={32} color="#4CAF50" style={{ marginBottom: SPACING.sm }} />
               <Text style={styles.featureTitle}>View Statistics</Text>
               <Text style={styles.featureDesc}>
                 Pie charts with drill-down, bar charts, and line charts for your balance over time.
@@ -200,7 +230,7 @@ function OnboardingScreen() {
             </Card>
 
             <Card style={styles.featureCard}>
-              <Text style={styles.featureIcon}>📁</Text>
+              <Ionicons name="folder-open-outline" size={32} color="#FF9800" style={{ marginBottom: SPACING.sm }} />
               <Text style={styles.featureTitle}>Custom Categories</Text>
               <Text style={styles.featureDesc}>
                 Up to 3 levels of categories, fully customizable with icons.
@@ -208,7 +238,7 @@ function OnboardingScreen() {
             </Card>
 
             <Card style={styles.featureCard}>
-              <Text style={styles.featureIcon}>💱</Text>
+              <Ionicons name="swap-horizontal-outline" size={32} color="#9C27B0" style={{ marginBottom: SPACING.sm }} />
               <Text style={styles.featureTitle}>Multi-Currency</Text>
               <Text style={styles.featureDesc}>
                 Track in any currency with automatic FX conversion for statistics.
@@ -230,7 +260,7 @@ function OnboardingScreen() {
             />
           )}
           <Button
-            title={step === 2 ? 'Get Started' : 'Next'}
+            title={step === 3 ? 'Get Started' : 'Next'}
             onPress={nextStep}
             style={{ flex: 1 }}
             size="lg"
@@ -240,11 +270,16 @@ function OnboardingScreen() {
         </View>
       </View>
 
-      {/* Currency dropdown modal */}
+      {/* Main currency picker modal */}
       <Modal visible={showCurrencyDropdown} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Select Main Currency</Text>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Main Currency</Text>
+              <TouchableOpacity onPress={() => setShowCurrencyDropdown(false)}>
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
             <TextInput
               style={styles.searchInput}
               placeholder="Search currencies..."
@@ -256,35 +291,74 @@ function OnboardingScreen() {
             <FlatList
               data={filteredCurrencies}
               keyExtractor={(item) => item.code}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[
-                    styles.currencyRow,
-                    selectedCurrency === item.code && styles.currencyRowActive,
-                  ]}
-                  onPress={() => {
-                    setSelectedCurrency(item.code);
-                    // Remove from secondary if it was there
-                    setSecondaryCurrencies((prev) => prev.filter((c) => c !== item.code));
-                    setShowCurrencyDropdown(false);
-                  }}
-                >
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.currencyRowCode}>{item.code}</Text>
-                    <Text style={styles.currencyRowName}>{item.name}</Text>
-                  </View>
-                  {selectedCurrency === item.code && (
-                    <Text style={styles.currencyCheck}>✓</Text>
-                  )}
-                </TouchableOpacity>
-              )}
-              style={{ maxHeight: 350 }}
+              renderItem={({ item }) => {
+                const isSelected = selectedCurrency === item.code;
+                return (
+                  <TouchableOpacity
+                    style={[styles.pickerRow, isSelected && styles.pickerRowSelected]}
+                    onPress={() => {
+                      setSelectedCurrency(item.code);
+                      setSecondaryCurrencies((prev) => prev.filter((c) => c !== item.code));
+                      setShowCurrencyDropdown(false);
+                    }}
+                  >
+                    <Text style={styles.pickerSymbol}>{item.symbol}</Text>
+                    <View style={styles.pickerInfo}>
+                      <Text style={styles.pickerCode}>{item.code}</Text>
+                      <Text style={styles.pickerName}>{item.name}</Text>
+                    </View>
+                    {isSelected && <Ionicons name="checkmark-circle" size={22} color="#2196F3" />}
+                  </TouchableOpacity>
+                );
+              }}
+              contentContainerStyle={{ paddingBottom: SPACING.lg }}
             />
-            <Button
-              title="Cancel"
-              variant="ghost"
-              onPress={() => setShowCurrencyDropdown(false)}
-              style={{ marginTop: SPACING.md }}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Secondary currency picker modal */}
+      <Modal visible={showSecondaryPicker} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Add Secondary Currencies</Text>
+              <TouchableOpacity onPress={() => setShowSecondaryPicker(false)}>
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search currencies..."
+              value={currencySearch}
+              onChangeText={setCurrencySearch}
+              placeholderTextColor="#999"
+              autoFocus
+            />
+            <FlatList
+              data={filteredCurrencies.filter((c) => c.code !== selectedCurrency)}
+              keyExtractor={(item) => item.code}
+              renderItem={({ item }) => {
+                const isChecked = secondaryCurrencies.includes(item.code);
+                return (
+                  <TouchableOpacity
+                    style={[styles.pickerRow, isChecked && styles.pickerRowChecked]}
+                    onPress={() => toggleSecondary(item.code)}
+                  >
+                    <Text style={styles.pickerSymbol}>{item.symbol}</Text>
+                    <View style={styles.pickerInfo}>
+                      <Text style={styles.pickerCode}>{item.code}</Text>
+                      <Text style={styles.pickerName}>{item.name}</Text>
+                    </View>
+                    <Ionicons
+                      name={isChecked ? 'checkbox' : 'square-outline'}
+                      size={22}
+                      color={isChecked ? '#2196F3' : '#ccc'}
+                    />
+                  </TouchableOpacity>
+                );
+              }}
+              contentContainerStyle={{ paddingBottom: SPACING.lg }}
             />
           </View>
         </View>
@@ -320,7 +394,6 @@ const styles = StyleSheet.create({
   },
   dotActive: { backgroundColor: '#2196F3', width: 24 },
   stepContainer: { alignItems: 'center' },
-  emoji: { fontSize: 56, marginBottom: SPACING.md },
   title: {
     fontSize: FONT_SIZE.xxl,
     fontWeight: '800',
@@ -361,43 +434,64 @@ const styles = StyleSheet.create({
   optionRowActive: { backgroundColor: '#E3F2FD' },
   optionText: { fontSize: FONT_SIZE.md, color: '#222' },
   check: { fontSize: FONT_SIZE.lg, color: '#2196F3', fontWeight: '700' },
-  // Dropdown
-  dropdownBtn: {
+  // Currency dropdown (matches currency-tags page)
+  currencyDropdown: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     width: '100%',
-    paddingVertical: SPACING.md,
-    paddingHorizontal: SPACING.lg,
     backgroundColor: '#fff',
     borderRadius: BORDER_RADIUS.md,
-    borderWidth: 2,
-    borderColor: '#2196F3',
-  },
-  dropdownText: { fontSize: FONT_SIZE.md, fontWeight: '600', color: '#222', flex: 1 },
-  dropdownChevron: { fontSize: FONT_SIZE.sm, color: '#2196F3', marginLeft: SPACING.sm },
-  // Secondary chips
-  secondaryRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: SPACING.sm,
-    justifyContent: 'flex-start',
-    width: '100%',
-  },
-  secChip: {
-    paddingVertical: SPACING.sm,
+    paddingVertical: SPACING.md,
     paddingHorizontal: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
-    backgroundColor: '#f0f0f0',
     borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  currencyDropdownContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+  },
+  currencyDropdownSymbol: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#333',
+    width: 32,
+    textAlign: 'center',
+  },
+  currencyDropdownCode: { fontSize: FONT_SIZE.md, fontWeight: '700', color: '#222' },
+  currencyDropdownName: { fontSize: FONT_SIZE.xs, color: '#888' },
+  addCurrencyText: { fontSize: FONT_SIZE.sm, fontWeight: '600', color: '#2196F3' },
+  // Week starts on
+  weekRow: {
+    flexDirection: 'row',
+    gap: SPACING.md,
+    width: '100%',
+    marginTop: SPACING.md,
+  },
+  weekBtn: {
+    flex: 1,
+    paddingVertical: SPACING.lg,
+    backgroundColor: '#f0f0f0',
+    borderRadius: BORDER_RADIUS.md,
+    alignItems: 'center',
+    borderWidth: 2,
     borderColor: '#f0f0f0',
   },
-  secChipActive: { borderColor: '#2196F3', backgroundColor: '#E3F2FD' },
-  secChipText: { fontSize: FONT_SIZE.sm, color: '#555', fontWeight: '600' },
-  secChipTextActive: { color: '#1565C0' },
+  weekBtnActive: {
+    backgroundColor: '#2196F3',
+    borderColor: '#2196F3',
+  },
+  weekBtnText: {
+    fontSize: FONT_SIZE.md,
+    fontWeight: '600',
+    color: '#666',
+  },
+  weekBtnTextActive: {
+    color: '#fff',
+  },
   // Education
   featureCard: { width: '100%', marginBottom: SPACING.md, alignItems: 'center' },
-  featureIcon: { fontSize: 32, marginBottom: SPACING.sm },
   featureTitle: { fontSize: FONT_SIZE.md, fontWeight: '700', color: '#222', marginBottom: SPACING.xs },
   featureDesc: { fontSize: FONT_SIZE.sm, color: '#666', textAlign: 'center', lineHeight: 20 },
   floatingNavContainer: {
@@ -421,46 +515,64 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: SPACING.md,
   },
-  // Currency dropdown modal
+  // Modal (bottom sheet style — matches currency-tags page)
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'center',
-    padding: SPACING.xl,
+    justifyContent: 'flex-end',
   },
   modalContent: {
     backgroundColor: '#fff',
-    borderRadius: BORDER_RADIUS.lg,
-    padding: SPACING.xl,
-    maxHeight: '75%',
+    borderTopLeftRadius: BORDER_RADIUS.lg,
+    borderTopRightRadius: BORDER_RADIUS.lg,
+    maxHeight: '80%',
+    paddingBottom: SPACING.xl,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.lg,
+    paddingBottom: SPACING.sm,
   },
   modalTitle: {
-    fontSize: FONT_SIZE.xl,
+    fontSize: FONT_SIZE.lg,
     fontWeight: '700',
     color: '#222',
-    marginBottom: SPACING.md,
   },
   searchInput: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#e0e0e0',
     borderRadius: BORDER_RADIUS.md,
     paddingVertical: SPACING.sm,
     paddingHorizontal: SPACING.md,
     fontSize: FONT_SIZE.md,
+    marginHorizontal: SPACING.lg,
+    marginBottom: SPACING.sm,
     backgroundColor: '#fafafa',
-    marginBottom: SPACING.md,
   },
-  currencyRow: {
+  pickerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: SPACING.md,
-    paddingHorizontal: SPACING.sm,
-    borderBottomWidth: 1,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.lg,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#f0f0f0',
   },
-  currencyRowActive: { backgroundColor: '#E3F2FD' },
-  currencyRowSymbol: { fontSize: 20, fontWeight: '700', width: 36, textAlign: 'center', marginRight: SPACING.sm },
-  currencyRowCode: { fontSize: FONT_SIZE.md, fontWeight: '700', color: '#222' },
-  currencyRowName: { fontSize: FONT_SIZE.xs, color: '#888' },
-  currencyCheck: { fontSize: FONT_SIZE.lg, color: '#2196F3', fontWeight: '700' },
+  pickerRowSelected: { backgroundColor: '#E3F2FD' },
+  pickerRowChecked: { backgroundColor: '#F5F9FF' },
+  pickerSymbol: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#333',
+    width: 36,
+    textAlign: 'center',
+  },
+  pickerInfo: {
+    flex: 1,
+    marginLeft: SPACING.sm,
+  },
+  pickerCode: { fontSize: FONT_SIZE.md, fontWeight: '600', color: '#222' },
+  pickerName: { fontSize: FONT_SIZE.xs, color: '#888' },
 });

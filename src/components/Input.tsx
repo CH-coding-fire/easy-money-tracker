@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { forwardRef } from 'react';
 import {
   View,
   Text,
@@ -15,20 +15,23 @@ interface InputProps extends TextInputProps {
   containerStyle?: ViewStyle;
 }
 
-export function Input({ label, error, containerStyle, style, ...rest }: InputProps) {
-  return (
-    <View style={[styles.container, containerStyle]}>
-      {label && <Text style={styles.label}>{label}</Text>}
-      <TextInput
-        style={[styles.input, error ? styles.inputError : undefined, style]}
-        placeholderTextColor="#999"
-        accessibilityLabel={label}
-        {...rest}
-      />
-      {error && <Text style={styles.error}>{error}</Text>}
-    </View>
-  );
-}
+export const Input = forwardRef<TextInput, InputProps>(
+  ({ label, error, containerStyle, style, ...rest }, ref) => {
+    return (
+      <View style={[styles.container, containerStyle]}>
+        {label && <Text style={styles.label}>{label}</Text>}
+        <TextInput
+          ref={ref}
+          style={[styles.input, error ? styles.inputError : undefined, style]}
+          placeholderTextColor="#999"
+          accessibilityLabel={label}
+          {...rest}
+        />
+        {error && <Text style={styles.error}>{error}</Text>}
+      </View>
+    );
+  }
+);
 
 const styles = StyleSheet.create({
   container: {

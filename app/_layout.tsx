@@ -1,9 +1,12 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Platform } from 'react-native';
+import { Toast } from '../src/components/Toast';
+import { useUIStore } from '../src/store/uiStore';
+import * as SystemUI from 'expo-system-ui';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -12,6 +15,14 @@ const queryClient = new QueryClient({
 });
 
 export default function RootLayout() {
+  const { toast, hideToast } = useUIStore();
+
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      SystemUI.setBackgroundColorAsync('#ffffff');
+    }
+  }, []);
+
   return (
     <GestureHandlerRootView style={styles.root}>
       <QueryClientProvider client={queryClient}>
@@ -31,11 +42,19 @@ export default function RootLayout() {
             options={{ presentation: 'fullScreenModal', gestureEnabled: false }}
           />
         </Stack>
+        {toast && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            duration={2000}
+            onHide={hideToast}
+          />
+        )}
       </QueryClientProvider>
     </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
+  root: { flex: 1, backgroundColor: '#fff' },
 });

@@ -27,5 +27,9 @@ export function useFxRates() {
     initialData: settings.fxCache.lastUpdatedAt ? settings.fxCache : undefined,
   });
 
-  return query.data ?? settings.fxCache;
+  return {
+    data: query.data ?? settings.fxCache,
+    isLoading: query.isLoading,
+    isFetching: query.isFetching,
+  };
 }

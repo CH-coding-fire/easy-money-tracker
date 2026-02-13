@@ -7,6 +7,7 @@ import {
   Modal,
   StyleSheet,
 } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Category } from '../types';
 import { SPACING, BORDER_RADIUS, FONT_SIZE } from '../constants/spacing';
 import { Button } from './Button';
@@ -101,7 +102,7 @@ export function CategoryPicker({
           ))}
           {onEditFrequent && (
             <TouchableOpacity style={styles.editFreqBtn} onPress={onEditFrequent}>
-              <Text style={styles.editFreqText}>✏️</Text>
+              <Ionicons name="create-outline" size={16} color="#1565C0" />
             </TouchableOpacity>
           )}
         </View>
@@ -112,16 +113,21 @@ export function CategoryPicker({
         <Text style={[styles.pickerText, !selectedPath.length && { color: '#999' }]}>
           {selectedLabel}
         </Text>
-        <Text style={styles.chevron}>▼</Text>
+        <Ionicons name="chevron-down" size={14} color="#999" style={{ marginLeft: SPACING.sm }} />
       </TouchableOpacity>
 
       {/* Drill-down modal */}
       <Modal visible={modalVisible} animationType="slide" presentationStyle="pageSheet">
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={goBack}>
+            <TouchableOpacity onPress={goBack} style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons
+                name={drillStack.length > 1 ? 'chevron-back' : 'close'}
+                size={20}
+                color="#2196F3"
+              />
               <Text style={styles.backButton}>
-                {drillStack.length > 1 ? '← Back' : '✕ Close'}
+                {drillStack.length > 1 ? 'Back' : 'Close'}
               </Text>
             </TouchableOpacity>
             <Text style={styles.modalTitle} numberOfLines={1}>
@@ -200,9 +206,7 @@ const styles = StyleSheet.create({
   editFreqBtn: {
     paddingVertical: SPACING.xs,
     paddingHorizontal: SPACING.sm,
-  },
-  editFreqText: {
-    fontSize: FONT_SIZE.md,
+    justifyContent: 'center',
   },
   pickerButton: {
     flexDirection: 'row',
@@ -220,11 +224,7 @@ const styles = StyleSheet.create({
     color: '#222',
     flex: 1,
   },
-  chevron: {
-    fontSize: FONT_SIZE.xs,
-    color: '#999',
-    marginLeft: SPACING.sm,
-  },
+  // chevron replaced by Ionicons inline
   modalContainer: {
     flex: 1,
     backgroundColor: '#F5F5F5',

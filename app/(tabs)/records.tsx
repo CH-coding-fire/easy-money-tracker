@@ -9,6 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { ScreenContainer } from '../../src/components/ScreenContainer';
 import { Card } from '../../src/components/Card';
 import { ErrorBoundary } from '../../src/components/ErrorBoundary';
@@ -82,8 +83,10 @@ function EditRecordsScreen() {
 
   function renderTransaction({ item }: { item: Transaction }) {
     const isExpense = item.type === 'expense';
+    const hasDetails = item.title || item.description;
+    
     return (
-      <Card style={styles.txCard}>
+      <Card style={[styles.txCard, !hasDetails && styles.txCardCompact]}>
         <View style={styles.txRow}>
           <View style={styles.txInfo}>
             <View style={styles.txHeader}>
@@ -102,15 +105,18 @@ function EditRecordsScreen() {
               <Text style={styles.txDesc} numberOfLines={2}>{item.description}</Text>
             )}
             {item.isRecurring && (
-              <Text style={styles.txRecurring}>🔄 Recurring</Text>
+              <View style={styles.txRecurringRow}>
+                <Ionicons name="repeat" size={14} color="#FF9800" />
+                <Text style={styles.txRecurring}> Recurring</Text>
+              </View>
             )}
           </View>
           <View style={styles.txActions}>
             <TouchableOpacity style={styles.editBtn} onPress={() => handleEdit(item)}>
-              <Text style={styles.editText}>✏️</Text>
+              <Ionicons name="create-outline" size={20} color="#666" />
             </TouchableOpacity>
             <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(item)}>
-              <Text style={styles.deleteText}>🗑️</Text>
+              <Ionicons name="trash-outline" size={20} color="#F44336" />
             </TouchableOpacity>
           </View>
         </View>
@@ -140,7 +146,7 @@ function EditRecordsScreen() {
             onPress={() => setFilterType(type)}
           >
             <Text style={[styles.filterText, filterType === type && styles.filterTextActive]}>
-              {type === 'all' ? 'All' : type === 'expense' ? '💸 Expense' : '💵 Income'}
+              {type === 'all' ? 'All' : type === 'expense' ? 'Expense' : 'Income'}
             </Text>
           </TouchableOpacity>
         ))}
@@ -155,7 +161,7 @@ function EditRecordsScreen() {
         contentContainerStyle={styles.list}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={styles.emptyEmoji}>📝</Text>
+            <Ionicons name="document-text-outline" size={48} color="#ccc" style={{ marginBottom: SPACING.md }} />
             <Text style={styles.emptyText}>
               {search ? 'No records match your search' : 'No records yet'}
             </Text>
@@ -217,6 +223,9 @@ const styles = StyleSheet.create({
   },
   list: { paddingBottom: SPACING.xxxl },
   txCard: { marginBottom: SPACING.sm },
+  txCardCompact: { 
+    paddingVertical: SPACING.md,
+  },
   txRow: { flexDirection: 'row', alignItems: 'flex-start' },
   txInfo: { flex: 1 },
   txHeader: {
@@ -227,16 +236,18 @@ const styles = StyleSheet.create({
   txAmount: { fontSize: FONT_SIZE.lg, fontWeight: '800' },
   txDate: { fontSize: FONT_SIZE.xs, color: '#999' },
   txCategory: { fontSize: FONT_SIZE.sm, color: '#666', marginTop: 2 },
-  txTitle: { fontSize: FONT_SIZE.sm, color: '#333', fontWeight: '500', marginTop: 2 },
+  txTitle: { fontSize: FONT_SIZE.md, color: '#222', fontWeight: '700', marginTop: SPACING.xs },
   txDesc: { fontSize: FONT_SIZE.xs, color: '#888', marginTop: 2 },
-  txRecurring: { fontSize: FONT_SIZE.xs, color: '#FF9800', marginTop: 4 },
-  txActions: { marginLeft: SPACING.md, gap: SPACING.xs },
+  txRecurringRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
+  txRecurring: { fontSize: FONT_SIZE.xs, color: '#FF9800' },
+  txActions: { 
+    flexDirection: 'row',
+    marginLeft: SPACING.md, 
+    gap: SPACING.sm,
+  },
   editBtn: { padding: SPACING.xs },
-  editText: { fontSize: 20 },
   deleteBtn: { padding: SPACING.xs },
-  deleteText: { fontSize: 20 },
   empty: { alignItems: 'center', paddingVertical: SPACING.xxxl },
-  emptyEmoji: { fontSize: 48, marginBottom: SPACING.md },
   emptyText: { fontSize: FONT_SIZE.lg, color: '#666', fontWeight: '600' },
   emptyHint: { fontSize: FONT_SIZE.sm, color: '#999', marginTop: SPACING.xs },
 });

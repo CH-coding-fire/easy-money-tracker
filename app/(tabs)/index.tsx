@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,13 +7,16 @@ import {
   TouchableOpacity,
   Platform,
   KeyboardAvoidingView,
-  Alert,
+  TextInput,
+  Keyboard,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { generateUUID } from '../../src/utils/uuid';
 
 import { ScreenContainer } from '../../src/components/ScreenContainer';
@@ -53,8 +56,22 @@ function AddTransactionScreen() {
   const addMutation = useAddTransaction();
   const updateMutation = useUpdateTransaction();
   const transactions = useTransactions();
+  const amountInputRef = useRef<TextInput>(null);
 
-  const { transactionType, setTransactionType, editingTransactionId, setEditingTransactionId } = useUIStore();
+  const { transactionType, setTransactionType, editingTransactionId, setEditingTransactionId, showToast } = useUIStore();
+
+  // Auto-focus amount input when the Add tab is focused (triggers numpad on mobile)
+  // On Android, programmatic .focus() sometimes shows cursor but doesn't open
+  // the soft keyboard. A short delay after the tab transition ensures the
+  // keyboard reliably appears on both Android and iOS.
+  useFocusEffect(
+    useCallback(() => {
+      const timer = setTimeout(() => {
+        amountInputRef.current?.focus();
+      }, Platform.OS === 'android' ? 350 : 100);
+      return () => clearTimeout(timer);
+    }, [])
+  );
 
   // Editing state
   const editingTx = useMemo(() => {
@@ -126,11 +143,11 @@ function AddTransactionScreen() {
         await updateMutation.mutateAsync(tx);
         logger.info(TAG, 'Transaction updated', { id: tx.id });
         setEditingTransactionId(null);
-        Alert.alert('Success', 'Transaction updated!');
+        showToast('Transaction updated!', 'success');
       } else {
         await addMutation.mutateAsync(tx);
         logger.info(TAG, 'Transaction added', { id: tx.id });
-        Alert.alert('Success', 'Transaction saved!');
+        showToast('Transaction saved!', 'success');
       }
       // Reset form
       reset({ amount: '', title: '', description: '' });
@@ -141,7 +158,7 @@ function AddTransactionScreen() {
       setTitleEntered(false);
     } catch (err: any) {
       logger.error(TAG, 'Save failed', err);
-      Alert.alert('Error', `Failed to save: ${err.message}`);
+      showToast(`Failed to save: ${err.message}`, 'error');
     }
   }
 
@@ -163,8 +180,8 @@ function AddTransactionScreen() {
           {/* Row 0: Expense / Income toggle */}
           <SegmentedControl<TransactionType>
             options={[
-              { label: '💸 Expense', value: 'expense' },
-              { label: '💵 Income', value: 'income' },
+              { label: 'Expense', value: 'expense' },
+              { label: 'Income', value: 'income' },
             ]}
             selected={transactionType}
             onSelect={setTransactionType}
@@ -184,8 +201,11 @@ function AddTransactionScreen() {
                   name="amount"
                   render={({ field: { onChange, onBlur, value } }) => (
                     <Input
+                      ref={amountInputRef}
                       placeholder="0.00"
                       keyboardType="decimal-pad"
+                      inputMode="decimal"
+                      showSoftInputOnFocus={true}
                       value={value}
                       onChangeText={(v) => {
                         onChange(v);
@@ -220,7 +240,7 @@ function AddTransactionScreen() {
                   style={styles.currencyEditBtn}
                   onPress={() => router.push('/currency-tags')}
                 >
-                  <Text style={styles.currencyEditText}>✏️</Text>
+                  <Ionicons name="create-outline" size={16} color="#E65100" />
                 </TouchableOpacity>
               </View>
             )}
@@ -270,6 +290,7 @@ function AddTransactionScreen() {
               ]}
               selected={isRecurring ? 'recurring' : 'oneoff'}
               onSelect={(v) => setIsRecurring(v === 'recurring')}
+              disabled={!canShowRecurring}
             />
           </View>
 
@@ -415,9 +436,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#FFE0B2',
     marginLeft: SPACING.xs,
-  },
-  currencyEditText: {
-    fontSize: FONT_SIZE.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   dateBtn: {
     paddingVertical: SPACING.sm,

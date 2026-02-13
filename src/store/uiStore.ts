@@ -5,6 +5,11 @@ import { logger } from '../utils/logger';
 
 const TAG = 'UIStore';
 
+interface ToastConfig {
+  message: string;
+  type: 'success' | 'error' | 'info';
+}
+
 interface UIState {
   // Add Transaction screen
   transactionType: TransactionType;
@@ -29,6 +34,11 @@ interface UIState {
   // Edit transaction (pass ID to pre-fill form)
   editingTransactionId: string | null;
   setEditingTransactionId: (id: string | null) => void;
+
+  // Toast
+  toast: ToastConfig | null;
+  showToast: (message: string, type?: 'success' | 'error' | 'info') => void;
+  hideToast: () => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -72,5 +82,15 @@ export const useUIStore = create<UIState>((set) => ({
   setEditingTransactionId: (id) => {
     logger.debug(TAG, 'setEditingTransactionId', { id });
     set({ editingTransactionId: id });
+  },
+
+  // Toast
+  toast: null,
+  showToast: (message, type = 'success') => {
+    logger.debug(TAG, 'showToast', { message, type });
+    set({ toast: { message, type } });
+  },
+  hideToast: () => {
+    set({ toast: null });
   },
 }));

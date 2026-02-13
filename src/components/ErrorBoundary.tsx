@@ -1,5 +1,6 @@
 import React, { Component, ErrorInfo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Clipboard from 'expo-clipboard';
 import { SPACING, FONT_SIZE } from '../constants/spacing';
 import { logger } from '../utils/logger';
@@ -56,7 +57,7 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       return (
         <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-          <Text style={styles.emoji}>💥</Text>
+          <Ionicons name="alert-circle-outline" size={48} color="#D32F2F" style={{ marginBottom: SPACING.md }} />
           <Text style={styles.title}>Something went wrong</Text>
           <Text style={styles.screen}>
             Screen: {this.props.screenName ?? 'unknown'}
@@ -66,10 +67,16 @@ export class ErrorBoundary extends Component<Props, State> {
 
           <View style={styles.actions}>
             <TouchableOpacity style={styles.btn} onPress={this.handleRetry}>
-              <Text style={styles.btnText}>🔄 Retry</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name="refresh" size={16} color="#333" />
+                <Text style={styles.btnText}>Retry</Text>
+              </View>
             </TouchableOpacity>
             <TouchableOpacity style={styles.btn} onPress={this.handleCopyError}>
-              <Text style={styles.btnText}>📋 Copy Error</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name="copy-outline" size={16} color="#333" />
+                <Text style={styles.btnText}>Copy Error</Text>
+              </View>
             </TouchableOpacity>
           </View>
 
@@ -86,7 +93,6 @@ export class ErrorBoundary extends Component<Props, State> {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFF3F3' },
   content: { padding: SPACING.xl, alignItems: 'center' },
-  emoji: { fontSize: 48, marginBottom: SPACING.md },
   title: { fontSize: FONT_SIZE.xl, fontWeight: '700', color: '#D32F2F', marginBottom: SPACING.sm },
   screen: { fontSize: FONT_SIZE.sm, color: '#666', marginBottom: SPACING.xs },
   message: { fontSize: FONT_SIZE.md, color: '#333', textAlign: 'center', marginBottom: SPACING.sm },

@@ -5,7 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   Modal,
   FlatList,
 } from 'react-native';
@@ -13,6 +12,7 @@ import * as FileSystem from 'expo-file-system';
 import * as DocumentPicker from 'expo-document-picker';
 import { useRouter } from 'expo-router';
 
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { ScreenContainer } from '../../src/components/ScreenContainer';
 import { Card } from '../../src/components/Card';
 import { Button } from '../../src/components/Button';
@@ -25,6 +25,7 @@ import { LANGUAGES } from '../../src/constants/languages';
 import { SPACING, FONT_SIZE, BORDER_RADIUS } from '../../src/constants/spacing';
 import { logger } from '../../src/utils/logger';
 import { useQueryClient } from '@tanstack/react-query';
+import { useUIStore } from '../../src/store/uiStore';
 
 const TAG = 'SettingsScreen';
 
@@ -33,6 +34,7 @@ function SettingsScreen() {
   const settings = useSettings();
   const saveMutation = useSaveSettings();
   const qc = useQueryClient();
+  const { showToast } = useUIStore();
 
   const [showLangPicker, setShowLangPicker] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -43,9 +45,10 @@ function SettingsScreen() {
     try {
       await exportData();
       logger.info(TAG, 'Export successful');
+      showToast('Export successful!', 'success');
     } catch (err: any) {
       logger.error(TAG, 'Export failed', err);
-      Alert.alert('Export Failed', err.message);
+      showToast(`Export failed: ${err.message}`, 'error');
     } finally {
       setExporting(false);
     }
@@ -68,11 +71,11 @@ function SettingsScreen() {
       const jsonString = await FileSystem.readAsStringAsync(fileUri);
       await importData(jsonString);
       qc.invalidateQueries({ queryKey: ['appData'] });
-      Alert.alert('Import Successful', 'Your data has been restored.');
+      showToast('Import successful! Data restored.', 'success');
       logger.info(TAG, 'Import successful');
     } catch (err: any) {
       logger.error(TAG, 'Import failed', err);
-      Alert.alert('Import Failed', err.message);
+      showToast(`Import failed: ${err.message}`, 'error');
     } finally {
       setImporting(false);
     }
@@ -96,7 +99,7 @@ function SettingsScreen() {
           <Text style={styles.settingLabel}>Language</Text>
           <TouchableOpacity style={styles.settingValue} onPress={() => setShowLangPicker(true)}>
             <Text style={styles.valueText}>{selectedLang}</Text>
-            <Text style={styles.chevron}>▼</Text>
+            <Ionicons name="chevron-down" size={16} color="#999" />
           </TouchableOpacity>
         </Card>
 
@@ -105,7 +108,7 @@ function SettingsScreen() {
           <Text style={styles.settingLabel}>Default Currency</Text>
           <TouchableOpacity style={styles.settingValue} onPress={() => router.push('/currency-tags')}>
             <Text style={styles.valueText}>{settings.mainCurrency}</Text>
-            <Text style={styles.chevron}>›</Text>
+            <Ionicons name="chevron-forward" size={16} color="#999" />
           </TouchableOpacity>
         </Card>
 
@@ -114,7 +117,7 @@ function SettingsScreen() {
           <Text style={styles.settingLabel}>Categories</Text>
           <TouchableOpacity style={styles.settingValue} onPress={() => router.push('/category-edit')}>
             <Text style={styles.valueText}>Edit Categories</Text>
-            <Text style={styles.chevron}>›</Text>
+            <Ionicons name="chevron-forward" size={16} color="#999" />
           </TouchableOpacity>
         </Card>
 
@@ -178,7 +181,7 @@ function SettingsScreen() {
             <Card style={styles.settingCard}>
               <Text style={styles.settingLabel}>Developer Tools</Text>
               <Button
-                title="🔄  Replay Onboarding Flow"
+                title="Replay Onboarding Flow"
                 variant="outline"
                 size="sm"
                 onPress={() => {
@@ -215,7 +218,7 @@ function SettingsScreen() {
                     {item.label === item.nativeName ? item.label : `${item.label} ${item.nativeName}`}
                   </Text>
                   {settings.language === item.code && (
-                    <Text style={styles.langCheck}>✓</Text>
+                    <Ionicons name="checkmark" size={20} color="#2196F3" />
                   )}
                 </TouchableOpacity>
               )}
@@ -259,7 +262,7 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.xs,
   },
   valueText: { fontSize: FONT_SIZE.md, color: '#222' },
-  chevron: { fontSize: FONT_SIZE.md, color: '#999' },
+  // chevron replaced by Ionicons inline
   weekRow: { flexDirection: 'row', gap: SPACING.sm },
   weekBtn: {
     flex: 1,
@@ -327,5 +330,5 @@ const styles = StyleSheet.create({
   },
   langRowActive: { backgroundColor: '#E3F2FD' },
   langText: { fontSize: FONT_SIZE.md, color: '#222' },
-  langCheck: { fontSize: FONT_SIZE.lg, color: '#2196F3', fontWeight: '700' },
+  // langCheck replaced by Ionicons inline
 });
