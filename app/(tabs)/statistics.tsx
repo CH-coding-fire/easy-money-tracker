@@ -74,12 +74,12 @@ function StatisticsScreen() {
     statsMode, setStatsMode,
     statsDatePreset, setStatsDatePreset,
     statsCurrency, setStatsCurrency,
+    statsDrillCategory, setStatsDrillCategory,
   } = useUIStore();
 
   const [dateRange, setDateRange] = useState(
     getDateRange(statsDatePreset, settings.weekStartsOn)
   );
-  const [drillCategory, setDrillCategory] = useState<string | null>(null);
 
   // Initialize statsCurrency to user's main currency (once on mount)
   const currencyInitialized = useRef(false);
@@ -94,13 +94,11 @@ function StatisticsScreen() {
   function handlePresetChange(preset: DateRangePreset) {
     setStatsDatePreset(preset);
     setDateRange(getDateRange(preset, settings.weekStartsOn));
-    setDrillCategory(null);
   }
 
   function handleShift(direction: 'prev' | 'next') {
     const newRange = shiftDateRange(dateRange, direction, statsDatePreset, settings.weekStartsOn);
     setDateRange(newRange);
-    setDrillCategory(null);
   }
 
   // Currencies involved in ALL transactions within the date range (regardless of expense/income filter)
@@ -177,8 +175,8 @@ function StatisticsScreen() {
   // ── Drill-down pie data ──────────────────────────────────────────────────
 
   const drillPieData = useMemo(() => {
-    if (!drillCategory) return [];
-    const parent = pieData.find((d) => d.text === drillCategory);
+    if (!statsDrillCategory) return [];
+    const parent = pieData.find((d) => d.text === statsDrillCategory);
     if (!parent) return [];
     return Object.entries(parent.children)
       .map(([name, amount], i) => ({
@@ -187,7 +185,13 @@ function StatisticsScreen() {
         color: PIE_COLORS[(i + 5) % PIE_COLORS.length],
       }))
       .sort((a, b) => b.value - a.value);
-  }, [drillCategory, pieData]);
+  }, [statsDrillCategory, pieData]);
+
+  // Subtotal for the drilled category
+  const drillTotal = useMemo(
+    () => drillPieData.reduce((sum, d) => sum + d.value, 0),
+    [drillPieData],
+  );
 
   // ── Bar chart data ───────────────────────────────────────────────────────
 
@@ -244,10 +248,7 @@ function StatisticsScreen() {
             { label: 'Balance', value: 'balance_line' },
           ]}
           selected={statsMode}
-          onSelect={(m) => {
-            setStatsMode(m);
-            setDrillCategory(null);
-          }}
+          onSelect={(m) => setStatsMode(m)}
         />
 
         {/* Date range */}
@@ -432,29 +433,23 @@ function StatisticsScreen() {
         {/* Charts */}
         {statsMode !== 'balance_line' && (
           <>
-            {/* Pie chart */}
+            {/* Pie chart – Level 1 (always visible) */}
             <Card style={styles.chartCard}>
-              <Text style={styles.chartTitle}>
-                {drillCategory ? `${drillCategory} breakdown` : 'By Category'}
-              </Text>
-              {drillCategory && (
-                <TouchableOpacity onPress={() => setDrillCategory(null)} style={styles.backToPie}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Ionicons name="chevron-back" size={16} color="#2196F3" />
-                    <Text style={styles.backToPieText}>Back to overview</Text>
-                  </View>
-                </TouchableOpacity>
-              )}
-              {(drillCategory ? drillPieData : pieData).length > 0 ? (
+              <Text style={styles.chartTitle}>By Category</Text>
+              {pieData.length > 0 ? (
                 <PieChartWithLabels
-                  data={drillCategory ? drillPieData : pieData}
+                  data={pieData}
                   radius={80}
                   innerRadius={40}
                   centerLabel={`${statsCurrency} ${total.toFixed(0)}`}
                   currency={statsCurrency}
+                  expandedCategory={statsDrillCategory}
                   onSlicePress={(item) => {
-                    if (!drillCategory && 'children' in item && Object.keys(item.children ?? {}).length > 0) {
-                      setDrillCategory(item.text);
+                    if ('children' in item && Object.keys(item.children ?? {}).length > 0) {
+                      // Toggle: tap same → collapse, tap different → expand
+                      setStatsDrillCategory(
+                        statsDrillCategory === item.text ? null : item.text,
+                      );
                     }
                   }}
                   containerWidth={SCREEN_WIDTH - SPACING.lg * 4}
@@ -463,6 +458,34 @@ function StatisticsScreen() {
                 <Text style={styles.noData}>No data for this period</Text>
               )}
             </Card>
+
+            {/* Pie chart – Level 2 (expanded subcategories) */}
+            {statsDrillCategory && drillPieData.length > 0 && (
+              <Card style={styles.chartCard}>
+                <View style={styles.drillHeader}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.chartTitle}>
+                      {statsDrillCategory}
+                    </Text>
+                    <Text style={styles.drillSubtitle}>Subcategories</Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => setStatsDrillCategory(null)}
+                    style={styles.drillCloseBtn}
+                  >
+                    <Ionicons name="close" size={18} color="#999" />
+                  </TouchableOpacity>
+                </View>
+                <PieChartWithLabels
+                  data={drillPieData}
+                  radius={70}
+                  innerRadius={35}
+                  centerLabel={`${statsCurrency} ${drillTotal.toFixed(0)}`}
+                  currency={statsCurrency}
+                  containerWidth={SCREEN_WIDTH - SPACING.lg * 4}
+                />
+              </Card>
+            )}
 
             {/* Bar chart */}
             <Card style={styles.chartCard}>
@@ -731,8 +754,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.sm,
     borderRadius: 4,
   },
-  backToPie: { marginBottom: SPACING.sm },
-  backToPieText: { fontSize: FONT_SIZE.sm, color: '#2196F3', fontWeight: '600' },
+  drillHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: SPACING.xs,
+  },
+  drillSubtitle: {
+    fontSize: FONT_SIZE.xs,
+    color: '#999',
+    marginTop: 2,
+  },
+  drillCloseBtn: {
+    padding: SPACING.xs,
+    borderRadius: 20,
+    backgroundColor: '#F5F5F5',
+  },
   noData: {
     textAlign: 'center',
     color: '#999',

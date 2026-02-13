@@ -22,6 +22,8 @@ interface PieChartWithLabelsProps {
   centerLabel?: string;
   currency: string;
   onSlicePress?: (item: PieDataItem) => void;
+  /** Name of the currently-expanded category (shows a highlight on that label) */
+  expandedCategory?: string | null;
   containerWidth: number;
 }
 
@@ -56,6 +58,7 @@ export function PieChartWithLabels({
   centerLabel,
   currency,
   onSlicePress,
+  expandedCategory,
   containerWidth,
 }: PieChartWithLabelsProps) {
   const total = useMemo(
@@ -262,33 +265,53 @@ export function PieChartWithLabels({
         </Svg>
 
         {/* Labels (native Text for crisp rendering & accessibility) */}
-        {positioned.map((l, i) => (
-          <TouchableOpacity
-            key={i}
-            activeOpacity={onSlicePress ? 0.6 : 1}
-            onPress={() => onSlicePress?.(l.item)}
-            style={[
-              styles.labelTouch,
-              l.isRight
-                ? { left: rightLabelStart, width: rightLabelWidth, top: l.y - 16 }
-                : { left: 4, width: leftLabelWidth, top: l.y - 16 },
-            ]}
-          >
-            <View
-              style={l.isRight ? styles.labelInnerRight : styles.labelInnerLeft}
+        {positioned.map((l, i) => {
+          const hasChildren = l.item.children && Object.keys(l.item.children).length > 0;
+          const isExpanded = expandedCategory === l.item.text;
+          return (
+            <TouchableOpacity
+              key={i}
+              activeOpacity={onSlicePress ? 0.6 : 1}
+              onPress={() => onSlicePress?.(l.item)}
+              style={[
+                styles.labelTouch,
+                l.isRight
+                  ? { left: rightLabelStart, width: rightLabelWidth, top: l.y - 16 }
+                  : { left: 4, width: leftLabelWidth, top: l.y - 16 },
+              ]}
             >
-              <Text
-                style={[styles.labelName, { color: l.item.color }]}
-                numberOfLines={2}
+              <View
+                style={l.isRight ? styles.labelInnerRight : styles.labelInnerLeft}
               >
-                {l.item.text}
-              </Text>
-              <Text style={styles.labelAmount} numberOfLines={1}>
-                {currency} {l.item.value.toFixed(0)}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        ))}
+                <View style={styles.labelNameRow}>
+                  {!l.isRight && hasChildren && (
+                    <Text style={[styles.labelExpandHint, { color: isExpanded ? '#2196F3' : l.item.color }]}>
+                      {isExpanded ? '▼' : '▶'}
+                    </Text>
+                  )}
+                  <Text
+                    style={[
+                      styles.labelName,
+                      { color: l.item.color },
+                      isExpanded && styles.labelNameExpanded,
+                    ]}
+                    numberOfLines={2}
+                  >
+                    {l.item.text}
+                  </Text>
+                  {l.isRight && hasChildren && (
+                    <Text style={[styles.labelExpandHint, { color: isExpanded ? '#2196F3' : l.item.color }]}>
+                      {isExpanded ? ' ▼' : ' ▶'}
+                    </Text>
+                  )}
+                </View>
+                <Text style={styles.labelAmount} numberOfLines={1}>
+                  {currency} {l.item.value.toFixed(0)}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
       </View>
     </View>
   );
@@ -323,8 +346,20 @@ const styles = StyleSheet.create({
   labelInnerLeft: {
     alignItems: 'flex-end',
   },
+  labelNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   labelName: {
     fontSize: 12,
+    fontWeight: '700',
+    flexShrink: 1,
+  },
+  labelNameExpanded: {
+    textDecorationLine: 'underline',
+  },
+  labelExpandHint: {
+    fontSize: 8,
     fontWeight: '700',
   },
   labelAmount: {

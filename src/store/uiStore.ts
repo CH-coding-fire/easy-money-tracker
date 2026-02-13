@@ -22,6 +22,9 @@ interface UIState {
   setStatsDatePreset: (preset: DateRangePreset) => void;
   statsCurrency: string;
   setStatsCurrency: (currency: string) => void;
+  /** Which Level-1 category is expanded to show Level-2 pie chart (persists across visits) */
+  statsDrillCategory: string | null;
+  setStatsDrillCategory: (cat: string | null) => void;
 
   // Edit Records screen
   searchQuery: string;
@@ -60,6 +63,11 @@ export const useUIStore = create<UIState>((set) => ({
   setStatsCurrency: (currency) => {
     logger.debug(TAG, 'setStatsCurrency', { currency });
     set({ statsCurrency: currency });
+  },
+  statsDrillCategory: null,
+  setStatsDrillCategory: (cat) => {
+    logger.debug(TAG, 'setStatsDrillCategory', { cat });
+    set({ statsDrillCategory: cat });
   },
 
   // Edit Records

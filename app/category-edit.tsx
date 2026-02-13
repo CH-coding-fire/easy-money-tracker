@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,9 @@ import {
 // CRITICAL: Use gesture-handler's TouchableOpacity inside DraggableFlatList
 // RN's TouchableOpacity conflicts with gesture-handler and breaks drag
 import { TouchableOpacity } from 'react-native-gesture-handler';
-import DraggableFlatList, {
+import {
+  NestableDraggableFlatList,
+  NestableScrollContainer,
   RenderItemParams,
 } from 'react-native-draggable-flatlist';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -19,14 +21,14 @@ import { ScreenContainer } from '../src/components/ScreenContainer';
 import { SegmentedControl } from '../src/components/SegmentedControl';
 import { Button } from '../src/components/Button';
 import { ErrorBoundary } from '../src/components/ErrorBoundary';
-import { useQueryClient } from '@tanstack/react-query';
 import { useCategories, useSaveCategories } from '../src/hooks/useCategories';
-import { Category, TransactionType, AppData } from '../src/types';
+import { Category, TransactionType } from '../src/types';
 import { SPACING, FONT_SIZE, BORDER_RADIUS } from '../src/constants/spacing';
 import { logger } from '../src/utils/logger';
 import { useUIStore } from '../src/store/uiStore';
 
 const TAG = 'CategoryEditScreen';
+const MAX_DEPTH = 3;
 
 const ICON_OPTIONS = [
   '📁', '🍔', '🏠', '💡', '🚗', '🏥', '🛡️', '🏛️', '🎉', '❤️',
@@ -37,54 +39,42 @@ const ICON_OPTIONS = [
 function CategoryEditScreen() {
   const categories = useCategories();
   const saveMutation = useSaveCategories();
-  const queryClient = useQueryClient();
   const { showToast } = useUIStore();
 
   const [catType, setCatType] = useState<TransactionType>('expense');
-  const [drillStack, setDrillStack] = useState<{ items: Category[]; path: string[] }[]>([]);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editName, setEditName] = useState('');
   const [editIcon, setEditIcon] = useState('📁');
-  const [editingCatId, setEditingCatId] = useState<string | null>(null); // null = adding new
+  const [editingCatId, setEditingCatId] = useState<string | null>(null);
+  const [addParentPath, setAddParentPath] = useState<string[]>([]);
 
   const topLevelItems = catType === 'expense' ? categories.expense : categories.income;
-  const currentItems = drillStack.length > 0
-    ? drillStack[drillStack.length - 1].items
-    : topLevelItems;
-  const currentPath = drillStack.length > 0
-    ? drillStack[drillStack.length - 1].path
-    : [];
 
-  // Deep clone + save
+  // ── helpers ──────────────────────────────────────────────────────────────
+
   function saveAll(expense: Category[], income: Category[]) {
     saveMutation.mutate({ expense, income });
   }
 
-  // Navigate into subcategories
-  function drillInto(cat: Category) {
-    if (cat.children && cat.children.length > 0) {
-      setDrillStack([...drillStack, { items: cat.children, path: [...currentPath, cat.name] }]);
-    } else {
-      showToast(`${cat.name} has no subcategories`, 'info');
-    }
+  function toggleExpand(id: string) {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
 
-  function goBack() {
-    if (drillStack.length > 0) {
-      setDrillStack(drillStack.slice(0, -1));
-    }
-  }
-
-  // Add new category
-  function openAddModal() {
+  function openAddModal(parentPath: string[] = []) {
     setEditingCatId(null);
+    setAddParentPath(parentPath);
     setEditName('');
     setEditIcon('📁');
     setEditModalVisible(true);
   }
 
-  // Edit existing
-  function openEditModal(cat: Category) {
+  function openEditModalForCat(cat: Category) {
     setEditingCatId(cat.id);
     setEditName(cat.name);
     setEditIcon(cat.icon ?? '📁');
@@ -102,25 +92,25 @@ function CategoryEditScreen() {
     const target = catType === 'expense' ? expense : income;
 
     if (editingCatId) {
-      // Update existing
       updateCategoryInTree(target, editingCatId, editName.trim(), editIcon);
       logger.info(TAG, 'Category updated', { id: editingCatId, name: editName });
     } else {
-      // Add new
       const newCat: Category = { id: generateUUID(), name: editName.trim(), icon: editIcon };
-      const parent = findParentArray(target, currentPath);
+      const parent = findOrCreateParentArray(target, addParentPath);
       parent.push(newCat);
-      logger.info(TAG, 'Category added', { name: editName, path: currentPath });
+      logger.info(TAG, 'Category added', { name: editName, parentPath: addParentPath });
     }
 
     saveAll(expense, income);
     setEditModalVisible(false);
-    // Refresh drill stack
-    refreshDrillStack(catType === 'expense' ? expense : income);
   }
 
-  function handleDelete(cat: Category) {
-    Alert.alert('Delete', `Delete "${cat.name}" and all its subcategories?`, [
+  function handleDeleteCat(cat: Category) {
+    const hasChildren = !!(cat.children && cat.children.length > 0);
+    const msg = hasChildren
+      ? `Delete "${cat.name}" and all its subcategories?`
+      : `Delete "${cat.name}"?`;
+    Alert.alert('Delete', msg, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
@@ -131,100 +121,35 @@ function CategoryEditScreen() {
           const target = catType === 'expense' ? expense : income;
           deleteCategoryFromTree(target, cat.id);
           saveAll(expense, income);
-          refreshDrillStack(catType === 'expense' ? expense : income);
           logger.info(TAG, 'Category deleted', { id: cat.id, name: cat.name });
         },
       },
     ]);
   }
 
-  function refreshDrillStack(items: Category[]) {
-    const newStack: { items: Category[]; path: string[] }[] = [];
-    let current = items;
-    for (const name of currentPath) {
-      const found = current.find((c) => c.name === name);
-      if (found?.children) {
-        newStack.push({ items: found.children, path: [...(newStack[newStack.length - 1]?.path ?? []), name] });
-        current = found.children;
-      } else {
-        break;
-      }
+  // ── drag handlers ────────────────────────────────────────────────────────
+
+  function handleRootDragEnd({ data }: { data: Category[] }) {
+    if (catType === 'expense') {
+      saveAll(data, structuredClone(categories.income));
+    } else {
+      saveAll(structuredClone(categories.expense), data);
     }
-    setDrillStack(newStack);
   }
 
-  const handleDragEnd = useCallback(({ data: newData }: { data: Category[] }) => {
+  function handleChildDragEnd(parentId: string, newChildren: Category[]) {
     const expense = structuredClone(categories.expense);
     const income = structuredClone(categories.income);
     const target = catType === 'expense' ? expense : income;
-    const arr = findParentArray(target, currentPath);
-    // Replace contents in-place with the new order
-    arr.length = 0;
-    arr.push(...newData);
-    logger.info(TAG, 'Categories reordered via drag', { path: currentPath, count: newData.length });
-
-    // Optimistically update React Query cache BEFORE async save
-    queryClient.setQueryData(['appData'], (old: AppData | undefined) => {
-      if (!old) return old;
-      return { ...old, categories: { expense, income } };
-    });
-
+    updateChildrenById(target, parentId, newChildren);
     saveAll(expense, income);
-    refreshDrillStack(catType === 'expense' ? expense : income);
-  }, [categories, catType, currentPath, queryClient]);
+  }
 
-  const depthLevel = drillStack.length;
-  const maxDepth = 3; // can't go deeper than L3
-  const canDrill = depthLevel < maxDepth - 1;
-
-  // renderItem for DraggableFlatList — includes all dependencies that the
-  // inner callbacks (openEditModal, drillInto, handleDelete) close over so
-  // that the rendered rows always use fresh state (drillStack, categories, etc.).
-  const renderItem = useCallback(({ item, drag, isActive }: RenderItemParams<Category>) => (
-    <View style={[
-      styles.catCard,
-      isActive && styles.catCardActive,
-    ]}>
-      <View style={styles.catRow}>
-        {/* Drag handle — long press to drag */}
-        <TouchableOpacity
-          onLongPress={drag}
-          delayLongPress={150}
-          disabled={isActive}
-          style={styles.dragHandle}
-          activeOpacity={0.5}
-        >
-          <Ionicons name="menu" size={20} color={isActive ? '#2196F3' : '#bbb'} />
-        </TouchableOpacity>
-        <Text style={styles.catIcon}>{item.icon ?? '📁'}</Text>
-        <View style={styles.catInfo}>
-          <Text style={styles.catName}>{item.name}</Text>
-          {item.children && (
-            <Text style={styles.catCount}>
-              {item.children.length} subcategories
-            </Text>
-          )}
-        </View>
-        <View style={styles.catActions}>
-          <TouchableOpacity style={styles.actionBtn} onPress={() => openEditModal(item)}>
-            <Ionicons name="create-outline" size={20} color="#666" />
-          </TouchableOpacity>
-          {canDrill && item.children !== undefined && (
-            <TouchableOpacity style={styles.actionBtn} onPress={() => drillInto(item)}>
-              <Ionicons name="folder-open-outline" size={20} color="#666" />
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity style={styles.actionBtn} onPress={() => handleDelete(item)}>
-            <Ionicons name="trash-outline" size={20} color="#F44336" />
-          </TouchableOpacity>
-        </View>
-      </View>
-    </View>
-  ), [canDrill, drillStack, categories, catType, currentPath]);
+  // ── render ───────────────────────────────────────────────────────────────
 
   return (
     <ScreenContainer style={{ paddingTop: SPACING.sm }}>
-      {/* Type toggle */}
+      {/* Fixed header */}
       <SegmentedControl<TransactionType>
         options={[
           { label: 'Expense', value: 'expense' },
@@ -233,72 +158,209 @@ function CategoryEditScreen() {
         selected={catType}
         onSelect={(v) => {
           setCatType(v);
-          setDrillStack([]);
+          setExpandedIds(new Set());
         }}
       />
 
-      {/* Breadcrumb */}
-      {drillStack.length > 0 && (
-        <View style={styles.breadcrumb}>
-          <TouchableOpacity onPress={() => setDrillStack([])}>
-            <Text style={styles.breadcrumbLink}>Root</Text>
-          </TouchableOpacity>
-          {currentPath.map((name, i) => (
-            <React.Fragment key={i}>
-              <Text style={styles.breadcrumbSep}> › </Text>
-              <TouchableOpacity onPress={() => setDrillStack(drillStack.slice(0, i + 1))}>
-                <Text
-                  style={[
-                    styles.breadcrumbLink,
-                    i === currentPath.length - 1 && styles.breadcrumbActive,
-                  ]}
-                >
-                  {name}
-                </Text>
-              </TouchableOpacity>
-            </React.Fragment>
-          ))}
+      <Text style={styles.sectionLabel}>All Categories</Text>
+      <Text style={styles.sectionHint}>
+        Long press ☰ to drag & reorder. Tap ▼ to expand subcategories.
+      </Text>
+
+      {/* Scrollable content with nested drag support */}
+      <NestableScrollContainer contentContainerStyle={styles.scrollContent}>
+        {/* ── Level 1: root categories ── */}
+        <NestableDraggableFlatList
+          data={topLevelItems}
+          keyExtractor={(item) => item.id}
+          onDragEnd={handleRootDragEnd}
+          dragItemOverflow
+          renderItem={({ item, drag, isActive }: RenderItemParams<Category>) => {
+            const hasChildren = !!(item.children && item.children.length > 0);
+            const isExpanded = expandedIds.has(item.id);
+
+            return (
+              <View style={[styles.l1Card, isActive && styles.cardActive]}>
+                {/* Root row */}
+                <View style={styles.row}>
+                  <TouchableOpacity
+                    onLongPress={drag}
+                    delayLongPress={150}
+                    disabled={isActive}
+                    style={styles.dragHandle}
+                    activeOpacity={0.5}
+                  >
+                    <Ionicons name="menu" size={20} color={isActive ? '#2196F3' : '#bbb'} />
+                  </TouchableOpacity>
+
+                  <Text style={styles.l1Icon}>{item.icon ?? '📁'}</Text>
+
+                  <View style={styles.info}>
+                    <Text style={styles.l1Name}>{item.name}</Text>
+                    {hasChildren && (
+                      <Text style={styles.count}>
+                        {item.children!.length} subcategories
+                      </Text>
+                    )}
+                  </View>
+
+                  <View style={styles.actions}>
+                    <TouchableOpacity style={styles.actionBtn} onPress={() => openEditModalForCat(item)}>
+                      <Ionicons name="create-outline" size={20} color="#666" />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.actionBtn} onPress={() => openAddModal([item.name])}>
+                      <Ionicons name="add-circle-outline" size={20} color="#2196F3" />
+                    </TouchableOpacity>
+                    {hasChildren && (
+                      <TouchableOpacity style={styles.actionBtn} onPress={() => toggleExpand(item.id)}>
+                        <Ionicons
+                          name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                          size={20}
+                          color="#666"
+                        />
+                      </TouchableOpacity>
+                    )}
+                    <TouchableOpacity style={styles.actionBtn} onPress={() => handleDeleteCat(item)}>
+                      <Ionicons name="trash-outline" size={20} color="#F44336" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* ── Level 2: expanded children ── */}
+                {isExpanded && hasChildren && (
+                  <View style={styles.l2Container}>
+                    <NestableDraggableFlatList
+                      data={item.children!}
+                      keyExtractor={(child) => child.id}
+                      onDragEnd={({ data }) => handleChildDragEnd(item.id, data)}
+                      renderItem={({ item: child, drag: childDrag, isActive: childActive }: RenderItemParams<Category>) => {
+                        const childHasKids = !!(child.children && child.children.length > 0);
+                        const childExpanded = expandedIds.has(child.id);
+                        const canAddL3 = MAX_DEPTH > 2;
+
+                        return (
+                          <View style={[styles.l2Card, childActive && styles.cardActive]}>
+                            <View style={styles.row}>
+                              <TouchableOpacity
+                                onLongPress={childDrag}
+                                delayLongPress={150}
+                                disabled={childActive}
+                                style={styles.dragHandle}
+                                activeOpacity={0.5}
+                              >
+                                <Ionicons name="menu" size={18} color={childActive ? '#2196F3' : '#bbb'} />
+                              </TouchableOpacity>
+
+                              <Text style={styles.l2Icon}>{child.icon ?? '📁'}</Text>
+
+                              <View style={styles.info}>
+                                <Text style={styles.l2Name}>{child.name}</Text>
+                                {childHasKids && (
+                                  <Text style={styles.count}>
+                                    {child.children!.length} subcategories
+                                  </Text>
+                                )}
+                              </View>
+
+                              <View style={styles.actions}>
+                                <TouchableOpacity style={styles.actionBtn} onPress={() => openEditModalForCat(child)}>
+                                  <Ionicons name="create-outline" size={18} color="#666" />
+                                </TouchableOpacity>
+                                {canAddL3 && (
+                                  <TouchableOpacity style={styles.actionBtn} onPress={() => openAddModal([item.name, child.name])}>
+                                    <Ionicons name="add-circle-outline" size={18} color="#2196F3" />
+                                  </TouchableOpacity>
+                                )}
+                                {childHasKids && (
+                                  <TouchableOpacity style={styles.actionBtn} onPress={() => toggleExpand(child.id)}>
+                                    <Ionicons
+                                      name={childExpanded ? 'chevron-up' : 'chevron-down'}
+                                      size={18}
+                                      color="#666"
+                                    />
+                                  </TouchableOpacity>
+                                )}
+                                <TouchableOpacity style={styles.actionBtn} onPress={() => handleDeleteCat(child)}>
+                                  <Ionicons name="trash-outline" size={18} color="#F44336" />
+                                </TouchableOpacity>
+                              </View>
+                            </View>
+
+                            {/* ── Level 3: grandchildren ── */}
+                            {childExpanded && childHasKids && (
+                              <View style={styles.l3Container}>
+                                <NestableDraggableFlatList
+                                  data={child.children!}
+                                  keyExtractor={(gc) => gc.id}
+                                  onDragEnd={({ data }) => handleChildDragEnd(child.id, data)}
+                                  renderItem={({ item: gc, drag: gcDrag, isActive: gcActive }: RenderItemParams<Category>) => (
+                                    <View style={[styles.l3Card, gcActive && styles.cardActive]}>
+                                      <View style={styles.row}>
+                                        <TouchableOpacity
+                                          onLongPress={gcDrag}
+                                          delayLongPress={150}
+                                          disabled={gcActive}
+                                          style={styles.dragHandle}
+                                          activeOpacity={0.5}
+                                        >
+                                          <Ionicons name="menu" size={16} color={gcActive ? '#2196F3' : '#bbb'} />
+                                        </TouchableOpacity>
+
+                                        <Text style={styles.l2Icon}>{gc.icon ?? '📁'}</Text>
+
+                                        <View style={styles.info}>
+                                          <Text style={styles.l2Name}>{gc.name}</Text>
+                                        </View>
+
+                                        <View style={styles.actions}>
+                                          <TouchableOpacity style={styles.actionBtn} onPress={() => openEditModalForCat(gc)}>
+                                            <Ionicons name="create-outline" size={18} color="#666" />
+                                          </TouchableOpacity>
+                                          <TouchableOpacity style={styles.actionBtn} onPress={() => handleDeleteCat(gc)}>
+                                            <Ionicons name="trash-outline" size={18} color="#F44336" />
+                                          </TouchableOpacity>
+                                        </View>
+                                      </View>
+                                    </View>
+                                  )}
+                                />
+                              </View>
+                            )}
+                          </View>
+                        );
+                      }}
+                    />
+                  </View>
+                )}
+              </View>
+            );
+          }}
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <Text style={styles.emptyText}>No categories yet</Text>
+            </View>
+          }
+        />
+
+        {/* Add root category button */}
+        <View style={styles.addRow}>
+          <Button title="+ Add Category" onPress={() => openAddModal([])} variant="primary" />
         </View>
-      )}
+      </NestableScrollContainer>
 
-      {/* Back button */}
-      {drillStack.length > 0 && (
-        <TouchableOpacity style={styles.backBtn} onPress={goBack}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Ionicons name="chevron-back" size={18} color="#2196F3" />
-            <Text style={styles.backText}>Back</Text>
-          </View>
-        </TouchableOpacity>
-      )}
-
-      {/* Category list — draggable */}
-      <DraggableFlatList
-        data={currentItems}
-        keyExtractor={(item) => item.id}
-        onDragEnd={handleDragEnd}
-        renderItem={renderItem}
-        containerStyle={styles.listContainer}
-        contentContainerStyle={styles.list}
-        dragItemOverflow={true}
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <Text style={styles.emptyText}>No categories yet</Text>
-          </View>
-        }
-      />
-
-      {/* Add button */}
-      <View style={styles.addRow}>
-        <Button title="+ Add Category" onPress={openAddModal} variant="primary" />
-      </View>
-
-      {/* Edit/Add Modal */}
+      {/* ── Edit / Add Modal ── */}
       <Modal visible={editModalVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>
               {editingCatId ? 'Edit Category' : 'New Category'}
             </Text>
+
+            {!editingCatId && addParentPath.length > 0 && (
+              <Text style={styles.modalSubtitle}>
+                Adding under: {addParentPath.join(' > ')}
+              </Text>
+            )}
 
             <TextInput
               style={styles.modalInput}
@@ -365,17 +427,31 @@ function deleteCategoryFromTree(items: Category[], id: string): boolean {
   return false;
 }
 
-function findParentArray(items: Category[], path: string[]): Category[] {
+/** Navigate the tree by path, creating children arrays as needed. */
+function findOrCreateParentArray(items: Category[], path: string[]): Category[] {
   let current = items;
   for (const name of path) {
     const found = current.find((c) => c.name === name);
-    if (found?.children) {
+    if (found) {
+      if (!found.children) found.children = [];
       current = found.children;
     } else {
       break;
     }
   }
   return current;
+}
+
+/** Find a category by ID and replace its children array. */
+function updateChildrenById(items: Category[], parentId: string, newChildren: Category[]): boolean {
+  for (const cat of items) {
+    if (cat.id === parentId) {
+      cat.children = newChildren;
+      return true;
+    }
+    if (cat.children && updateChildrenById(cat.children, parentId, newChildren)) return true;
+  }
+  return false;
 }
 
 export default function CategoryEditWithBoundary() {
@@ -386,30 +462,53 @@ export default function CategoryEditWithBoundary() {
   );
 }
 
+// ── Styles ──────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-  breadcrumb: {
+  sectionLabel: {
+    fontSize: FONT_SIZE.md,
+    fontWeight: '700',
+    color: '#222',
+    marginBottom: SPACING.xs,
+    marginTop: SPACING.md,
+  },
+  sectionHint: {
+    fontSize: FONT_SIZE.xs,
+    color: '#999',
+    marginBottom: SPACING.sm,
+  },
+  scrollContent: {
+    paddingBottom: SPACING.lg,
+  },
+
+  // ── Shared row ──
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: SPACING.md,
-    flexWrap: 'wrap',
   },
-  breadcrumbLink: { fontSize: FONT_SIZE.sm, color: '#2196F3', fontWeight: '500' },
-  breadcrumbSep: { fontSize: FONT_SIZE.sm, color: '#999' },
-  breadcrumbActive: { color: '#222', fontWeight: '700' },
-  backBtn: { marginTop: SPACING.sm, marginBottom: SPACING.xs },
-  backText: { fontSize: FONT_SIZE.md, color: '#2196F3', fontWeight: '600' },
-  listContainer: { flex: 1, backgroundColor: 'transparent' },
-  list: { paddingTop: SPACING.sm, paddingBottom: SPACING.xs },
-  catCard: {
+  dragHandle: {
+    paddingVertical: SPACING.xs,
+    paddingHorizontal: SPACING.sm,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  info: { flex: 1 },
+  count: { fontSize: FONT_SIZE.xs, color: '#888', marginTop: 2 },
+  actions: { flexDirection: 'row', gap: SPACING.xs },
+  actionBtn: { padding: SPACING.xs },
+
+  // ── Level 1: root cards ──
+  l1Card: {
     backgroundColor: '#fff',
     borderRadius: BORDER_RADIUS.md,
     paddingVertical: SPACING.sm,
-    paddingHorizontal: SPACING.md,
+    paddingRight: SPACING.sm,
     marginBottom: SPACING.sm,
     borderWidth: 1,
     borderColor: '#f0f0f0',
+    overflow: 'hidden',
   },
-  catCardActive: {
+  cardActive: {
     backgroundColor: '#E3F2FD',
     borderColor: '#90CAF9',
     elevation: 6,
@@ -418,23 +517,47 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 12,
   },
-  catRow: { flexDirection: 'row', alignItems: 'center' },
-  dragHandle: {
-    paddingVertical: SPACING.xs,
-    paddingHorizontal: SPACING.sm,
-    marginLeft: -SPACING.xs,
-    justifyContent: 'center',
-    alignItems: 'center',
+  l1Icon: { fontSize: 24, marginRight: SPACING.md },
+  l1Name: { fontSize: FONT_SIZE.md, fontWeight: '600', color: '#222' },
+
+  // ── Level 2: children ──
+  l2Container: {
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+    marginTop: SPACING.xs,
+    paddingLeft: SPACING.lg,
+    backgroundColor: '#fafafa',
   },
-  catIcon: { fontSize: 24, marginRight: SPACING.md },
-  catInfo: { flex: 1 },
-  catName: { fontSize: FONT_SIZE.md, fontWeight: '600', color: '#222' },
-  catCount: { fontSize: FONT_SIZE.xs, color: '#888', marginTop: 2 },
-  catActions: { flexDirection: 'row', gap: SPACING.xs },
-  actionBtn: { padding: SPACING.xs },
+  l2Card: {
+    paddingVertical: SPACING.xs,
+    paddingRight: SPACING.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  l2Icon: { fontSize: 18, marginRight: SPACING.sm },
+  l2Name: { fontSize: FONT_SIZE.sm, fontWeight: '500', color: '#333' },
+
+  // ── Level 3: grandchildren ──
+  l3Container: {
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    marginTop: SPACING.xs,
+    paddingLeft: SPACING.lg,
+    backgroundColor: '#f5f5f5',
+  },
+  l3Card: {
+    paddingVertical: SPACING.xs,
+    paddingRight: SPACING.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+
+  // ── Empty + add ──
   empty: { alignItems: 'center', paddingVertical: SPACING.xxxl },
   emptyText: { fontSize: FONT_SIZE.md, color: '#999' },
   addRow: { paddingVertical: SPACING.md },
+
+  // ── Modal ──
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
@@ -450,6 +573,12 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZE.xl,
     fontWeight: '700',
     color: '#222',
+    marginBottom: SPACING.sm,
+  },
+  modalSubtitle: {
+    fontSize: FONT_SIZE.sm,
+    color: '#2196F3',
+    fontWeight: '500',
     marginBottom: SPACING.lg,
   },
   modalInput: {
