@@ -50,17 +50,23 @@ function OnboardingScreen() {
     if (step < 2) {
       setStep(step + 1);
     } else {
-      // Complete onboarding
-      saveMutation.mutate({
-        ...settings,
-        language: selectedLang,
-        mainCurrency: selectedCurrency,
-        secondaryCurrencies,
-        frequentCurrencies: [selectedCurrency, ...secondaryCurrencies.slice(0, 2)],
-        onboardingComplete: true,
-      });
-      logger.info(TAG, 'Onboarding complete', { lang: selectedLang, currency: selectedCurrency });
-      router.replace('/(tabs)');
+      // Complete onboarding — navigate only AFTER save succeeds
+      saveMutation.mutate(
+        {
+          ...settings,
+          language: selectedLang,
+          mainCurrency: selectedCurrency,
+          secondaryCurrencies,
+          frequentCurrencies: [selectedCurrency, ...secondaryCurrencies.slice(0, 2)],
+          onboardingComplete: true,
+        },
+        {
+          onSuccess: () => {
+            logger.info(TAG, 'Onboarding complete', { lang: selectedLang, currency: selectedCurrency });
+            router.replace('/(tabs)');
+          },
+        }
+      );
     }
   }
 
@@ -228,6 +234,8 @@ function OnboardingScreen() {
             onPress={nextStep}
             style={{ flex: 1 }}
             size="lg"
+            loading={saveMutation.isPending}
+            disabled={saveMutation.isPending}
           />
         </View>
       </View>
