@@ -173,14 +173,11 @@ function AddTransactionScreen() {
           {/* Row 1: Amount + Currency */}
           <Card style={styles.row}>
             <View style={styles.amountRow}>
-              <TouchableOpacity
-                style={styles.currencyBtn}
-                onPress={() => router.push('/currency-tags')}
-              >
+              <View style={styles.currencyBtn}>
                 <Text style={styles.currencyText}>
                   {selectedCurrency}
                 </Text>
-              </TouchableOpacity>
+              </View>
               <View style={styles.amountInput}>
                 <Controller
                   control={control}
@@ -202,6 +199,31 @@ function AddTransactionScreen() {
                 />
               </View>
             </View>
+
+            {/* Secondary currency quick-switch tags */}
+            {(settings.secondaryCurrencies.length > 0 || settings.frequentCurrencies.length > 0) && (
+              <View style={styles.currencyTagsRow}>
+                {/* Show secondary currencies first, then frequent currencies (excluding main and already shown) */}
+                {[...new Set([...settings.secondaryCurrencies, ...settings.frequentCurrencies])]
+                  .filter(code => code !== selectedCurrency)
+                  .slice(0, 6)
+                  .map((code) => (
+                    <TouchableOpacity
+                      key={code}
+                      style={styles.currencyTag}
+                      onPress={() => setSelectedCurrency(code)}
+                    >
+                      <Text style={styles.currencyTagText}>{code}</Text>
+                    </TouchableOpacity>
+                  ))}
+                <TouchableOpacity
+                  style={styles.currencyEditBtn}
+                  onPress={() => router.push('/currency-tags')}
+                >
+                  <Text style={styles.currencyEditText}>✏️</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </Card>
 
           {/* Row 2+3: Category (frequent + full picker) */}
@@ -362,6 +384,40 @@ const styles = StyleSheet.create({
   },
   amountInput: {
     flex: 1,
+  },
+  currencyTagsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: SPACING.xs,
+    marginTop: SPACING.md,
+    alignItems: 'center',
+  },
+  currencyTag: {
+    paddingVertical: SPACING.sm - 2,
+    paddingHorizontal: SPACING.md,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    minWidth: 55,
+    alignItems: 'center',
+  },
+  currencyTagText: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: '600',
+    color: '#666',
+  },
+  currencyEditBtn: {
+    paddingVertical: SPACING.xs - 2,
+    paddingHorizontal: SPACING.xs,
+    backgroundColor: '#FFF3E0',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#FFE0B2',
+    marginLeft: SPACING.xs,
+  },
+  currencyEditText: {
+    fontSize: FONT_SIZE.sm,
   },
   dateBtn: {
     paddingVertical: SPACING.sm,
