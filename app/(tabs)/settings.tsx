@@ -83,7 +83,7 @@ function SettingsScreen() {
 
   function handleLanguageSelect(code: string) {
     logger.info(TAG, 'Language changed', { code });
-    saveMutation.mutate({ ...settings, language: code });
+    saveMutation.mutate({ language: code });
     setShowLangPicker(false);
   }
 
@@ -121,6 +121,15 @@ function SettingsScreen() {
           </TouchableOpacity>
         </Card>
 
+        {/* Frequent Categories */}
+        <Card style={styles.settingCard}>
+          <Text style={styles.settingLabel}>Frequent Categories</Text>
+          <TouchableOpacity style={styles.settingValue} onPress={() => router.push('/frequent-categories')}>
+            <Text style={styles.valueText}>Edit Frequent Categories</Text>
+            <Ionicons name="chevron-forward" size={16} color="#999" />
+          </TouchableOpacity>
+        </Card>
+
         {/* Week starts on */}
         <Card style={styles.settingCard}>
           <Text style={styles.settingLabel}>Week Starts On</Text>
@@ -129,7 +138,7 @@ function SettingsScreen() {
               <TouchableOpacity
                 key={day}
                 style={[styles.weekBtn, settings.weekStartsOn === day && styles.weekBtnActive]}
-                onPress={() => saveMutation.mutate({ ...settings, weekStartsOn: day })}
+                onPress={() => saveMutation.mutate({ weekStartsOn: day })}
               >
                 <Text style={[styles.weekBtnText, settings.weekStartsOn === day && styles.weekBtnTextActive]}>
                   {day.charAt(0).toUpperCase() + day.slice(1)}
@@ -166,7 +175,7 @@ function SettingsScreen() {
         <Card style={styles.settingCard}>
           <TouchableOpacity
             style={styles.debugToggle}
-            onPress={() => saveMutation.mutate({ ...settings, debugMode: !settings.debugMode })}
+            onPress={() => saveMutation.mutate({ debugMode: !settings.debugMode })}
           >
             <Text style={styles.settingLabel}>Debug Mode</Text>
             <View style={[styles.toggle, settings.debugMode && styles.toggleActive]}>
@@ -185,7 +194,7 @@ function SettingsScreen() {
                 variant="outline"
                 size="sm"
                 onPress={() => {
-                  saveMutation.mutate({ ...settings, onboardingComplete: false });
+                  saveMutation.mutate({ onboardingComplete: false });
                   logger.info(TAG, 'Replaying onboarding flow');
                   router.replace('/onboarding');
                 }}

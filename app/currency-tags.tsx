@@ -36,18 +36,26 @@ function CurrencyTagsScreen() {
     .map((code) => ALL_CURRENCIES.find((c) => c.code === code))
     .filter(Boolean) as CurrencyInfo[];
 
+  // Helper: read the freshest settings from React Query cache
+  const getLatestSettings = useCallback(() => {
+    const appData = queryClient.getQueryData<AppData>(['appData']);
+    return appData?.settings ?? settings;
+  }, [queryClient, settings]);
+
   // ── Main currency ──────────────────────────────────────────────────────
-  function selectMainCurrency(code: string) {
+  const selectMainCurrency = useCallback((code: string) => {
     logger.info(TAG, 'Set main currency', { code });
-    const sec = settings.secondaryCurrencies.filter((c) => c !== code);
-    saveMutation.mutate({ ...settings, mainCurrency: code, secondaryCurrencies: sec });
+    const latest = getLatestSettings();
+    const sec = latest.secondaryCurrencies.filter((c: string) => c !== code);
+    saveMutation.mutate({ mainCurrency: code, secondaryCurrencies: sec });
     setMainPickerVisible(false);
     setSearch('');
-  }
+  }, [getLatestSettings, saveMutation]);
 
   // ── Secondary currencies ───────────────────────────────────────────────
-  function toggleSecondary(code: string) {
-    const sec = [...settings.secondaryCurrencies];
+  const toggleSecondary = useCallback((code: string) => {
+    const latest = getLatestSettings();
+    const sec = [...latest.secondaryCurrencies];
     const idx = sec.indexOf(code);
     if (idx === -1) {
       sec.push(code);
@@ -55,30 +63,22 @@ function CurrencyTagsScreen() {
       sec.splice(idx, 1);
     }
     logger.info(TAG, 'Toggle secondary currency', { code, isSecondary: idx === -1 });
-    saveMutation.mutate({ ...settings, secondaryCurrencies: sec });
-  }
+    saveMutation.mutate({ secondaryCurrencies: sec });
+  }, [getLatestSettings, saveMutation]);
 
-  function removeSecondary(code: string) {
-    const sec = settings.secondaryCurrencies.filter((c) => c !== code);
+  const removeSecondary = useCallback((code: string) => {
+    const latest = getLatestSettings();
+    const sec = latest.secondaryCurrencies.filter((c: string) => c !== code);
     logger.info(TAG, 'Remove secondary currency', { code });
-    saveMutation.mutate({ ...settings, secondaryCurrencies: sec });
-  }
+    saveMutation.mutate({ secondaryCurrencies: sec });
+  }, [getLatestSettings, saveMutation]);
 
   // ── Drag reorder ───────────────────────────────────────────────────────
   const handleDragEnd = useCallback(({ data: newData }: { data: CurrencyInfo[] }) => {
     const newOrder = newData.map((c) => c.code);
     logger.info(TAG, 'Reorder secondary currencies', { newOrder });
-
-    queryClient.setQueryData(['appData'], (old: AppData | undefined) => {
-      if (!old) return old;
-      return {
-        ...old,
-        settings: { ...old.settings, secondaryCurrencies: newOrder },
-      };
-    });
-
-    saveMutation.mutate({ ...settings, secondaryCurrencies: newOrder });
-  }, [settings, queryClient]);
+    saveMutation.mutate({ secondaryCurrencies: newOrder });
+  }, [saveMutation]);
 
   // ── Filtered list for modals ───────────────────────────────────────────
   const filteredCurrencies = search.trim()
@@ -113,7 +113,7 @@ function CurrencyTagsScreen() {
         <Ionicons name="close-circle" size={20} color="#F44336" />
       </TouchableOpacity>
     </View>
-  ), []);
+  ), [removeSecondary]);
 
   // ── Header content (sections 1, 2, 3-main) rendered above the draggable items ──
   const listHeader = (

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,34 +13,33 @@ import {
   FlatList,
   Pressable,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { generateUUID } from '../../src/utils/uuid';
 
-import { ScreenContainer } from '../../src/components/ScreenContainer';
-import { SegmentedControl } from '../../src/components/SegmentedControl';
-import { CategoryPicker } from '../../src/components/CategoryPicker';
-import { Input } from '../../src/components/Input';
-import { Button } from '../../src/components/Button';
-import { ErrorBoundary } from '../../src/components/ErrorBoundary';
+import { ScreenContainer } from '../src/components/ScreenContainer';
+import { SegmentedControl } from '../src/components/SegmentedControl';
+import { CategoryPicker } from '../src/components/CategoryPicker';
+import { Input } from '../src/components/Input';
+import { Button } from '../src/components/Button';
+import { Card } from '../src/components/Card';
+import { ErrorBoundary } from '../src/components/ErrorBoundary';
 
-import { useCategories } from '../../src/hooks/useCategories';
-import { useSettings } from '../../src/hooks/useSettings';
-import { useAddTransaction } from '../../src/hooks/useTransactions';
-import { useUIStore } from '../../src/store/uiStore';
-import { TransactionType, Transaction } from '../../src/types';
-import { SPACING, FONT_SIZE, BORDER_RADIUS } from '../../src/constants/spacing';
-import { ALL_CURRENCIES } from '../../src/constants/currencies';
-import { todayISO, nowISO, formatISODate } from '../../src/utils/dateHelpers';
-import { logger } from '../../src/utils/logger';
+import { useCategories } from '../src/hooks/useCategories';
+import { useSettings } from '../src/hooks/useSettings';
+import { useUpdateTransaction, useTransactions } from '../src/hooks/useTransactions';
+import { useUIStore } from '../src/store/uiStore';
+import { TransactionType, Transaction } from '../src/types';
+import { SPACING, FONT_SIZE, BORDER_RADIUS } from '../src/constants/spacing';
+import { ALL_CURRENCIES } from '../src/constants/currencies';
+import { nowISO, parseLocalDate, formatISODate } from '../src/utils/dateHelpers';
+import { logger } from '../src/utils/logger';
 
-const TAG = 'AddTransactionScreen';
+const TAG = 'EditTransactionScreen';
 
 const txSchema = z.object({
   amount: z.string().min(1, 'Amount is required').refine(
@@ -53,19 +52,18 @@ const txSchema = z.object({
 
 type TxFormData = z.infer<typeof txSchema>;
 
-function AddTransactionScreen() {
+function EditTransactionScreen() {
   const router = useRouter();
+  const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const categories = useCategories();
   const settings = useSettings();
-  const addMutation = useAddTransaction();
-  const amountInputRef = useRef<TextInput>(null);
+  const updateMutation = useUpdateTransaction();
+  const transactions = useTransactions();
   const scrollViewRef = useRef<ScrollView>(null);
   const titleRowY = useRef(0);
   const descRowY = useRef(0);
-
-  // Tab bar height (mirrors _layout.tsx calculation)
-  const tabBarHeight = 56 + Math.max(insets.bottom, 4);
+  const { showToast } = useUIStore();
 
   // Scroll the ScrollView so the focused input is visible above the keyboard
   const scrollToInput = useCallback((yRef: React.MutableRefObject<number>) => {
@@ -77,23 +75,32 @@ function AddTransactionScreen() {
     }, 300);
   }, []);
 
-  const { transactionType, setTransactionType, showToast } = useUIStore();
+  // Find the transaction to edit
+  const editingTx = useMemo(() => {
+    if (!id) return null;
+    return transactions.find((t) => t.id === id) ?? null;
+  }, [id, transactions]);
 
-  // Auto-focus amount input when the Add tab is focused (triggers numpad on mobile)
-  useFocusEffect(
-    useCallback(() => {
-      const timer = setTimeout(() => {
-        amountInputRef.current?.focus();
-      }, Platform.OS === 'android' ? 350 : 100);
-      return () => clearTimeout(timer);
-    }, [])
-  );
+  // If transaction not found, show error
+  if (!editingTx) {
+    return (
+      <ScreenContainer>
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle-outline" size={48} color="#F44336" />
+          <Text style={styles.errorText}>Transaction not found</Text>
+          <Button title="Go Back" onPress={() => router.back()} size="md" />
+        </View>
+      </ScreenContainer>
+    );
+  }
 
-  const [selectedCurrency, setSelectedCurrency] = useState(settings.mainCurrency);
-  const [categoryPath, setCategoryPath] = useState<string[]>([]);
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  // All state is initialized from the transaction being edited — completely independent
+  const [transactionType, setTransactionType] = useState<TransactionType>(editingTx.type);
+  const [selectedCurrency, setSelectedCurrency] = useState(editingTx.currency);
+  const [categoryPath, setCategoryPath] = useState<string[]>([...editingTx.categoryPath]);
+  const [selectedDate, setSelectedDate] = useState(parseLocalDate(editingTx.date));
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [isRecurring, setIsRecurring] = useState(false);
+  const [isRecurring, setIsRecurring] = useState(editingTx.isRecurring);
   const [currencyPickerVisible, setCurrencyPickerVisible] = useState(false);
   const [currencySearch, setCurrencySearch] = useState('');
 
@@ -109,25 +116,50 @@ function AddTransactionScreen() {
     control,
     handleSubmit,
     formState: { errors },
-    reset,
+    watch,
   } = useForm<TxFormData>({
     resolver: zodResolver(txSchema),
     defaultValues: {
-      amount: '',
-      title: '',
-      description: '',
+      amount: String(editingTx.amount),
+      title: editingTx.title ?? '',
+      description: editingTx.description ?? '',
     },
   });
 
-  // Progressive blur logic
-  const [amountEntered, setAmountEntered] = useState(false);
-  const [titleEntered, setTitleEntered] = useState(false);
-  const categorySelected = categoryPath.length > 0;
-  const canShowRecurring = amountEntered && categorySelected;
-  const canShowTitle = canShowRecurring;
-  const canShowDescription = canShowTitle && titleEntered;
+  // Watch form values for change detection
+  const formValues = watch();
 
-  const canSave = amountEntered && categorySelected;
+  // Snapshot of original values for change detection
+  const original = useMemo(() => ({
+    amount: editingTx.amount,
+    currency: editingTx.currency,
+    categoryPath: editingTx.categoryPath,
+    date: editingTx.date,
+    isRecurring: editingTx.isRecurring,
+    title: editingTx.title,
+    description: editingTx.description,
+    type: editingTx.type,
+  }), [editingTx.id]);
+
+  // Check if form has changed
+  const hasChanges = useMemo(() => {
+    const currentAmount = Number(formValues.amount) || 0;
+    const currentDate = formatISODate(selectedDate);
+
+    return (
+      currentAmount !== original.amount ||
+      selectedCurrency !== original.currency ||
+      JSON.stringify(categoryPath) !== JSON.stringify(original.categoryPath) ||
+      currentDate !== original.date ||
+      isRecurring !== original.isRecurring ||
+      (formValues.title || '') !== (original.title || '') ||
+      (formValues.description || '') !== (original.description || '') ||
+      transactionType !== original.type
+    );
+  }, [formValues, selectedCurrency, categoryPath, selectedDate, isRecurring, transactionType, original]);
+
+  const categorySelected = categoryPath.length > 0;
+  const canSave = categorySelected && hasChanges;
 
   const currentCategories = transactionType === 'expense'
     ? categories.expense
@@ -139,7 +171,7 @@ function AddTransactionScreen() {
   async function onSubmit(data: TxFormData) {
     const now = nowISO();
     const tx: Transaction = {
-      id: generateUUID(),
+      id: editingTx.id,
       type: transactionType,
       amount: Number(data.amount),
       currency: selectedCurrency,
@@ -148,42 +180,55 @@ function AddTransactionScreen() {
       title: data.title || undefined,
       description: data.description || undefined,
       isRecurring,
-      recurringRule: undefined,
-      createdAt: now,
+      recurringRule: editingTx.recurringRule,
+      createdAt: editingTx.createdAt,
       updatedAt: now,
     };
 
     try {
-      await addMutation.mutateAsync(tx);
-      logger.info(TAG, 'Transaction added', { id: tx.id });
-      showToast('Transaction saved!', 'success');
-      // Reset form
-      reset({ amount: '', title: '', description: '' });
-      setCategoryPath([]);
-      setSelectedDate(new Date());
-      setIsRecurring(false);
-      setAmountEntered(false);
-      setTitleEntered(false);
+      await updateMutation.mutateAsync(tx);
+      logger.info(TAG, 'Transaction updated', { id: tx.id });
+      showToast('Transaction updated!', 'success');
+      router.back();
     } catch (err: any) {
-      logger.error(TAG, 'Save failed', err);
-      showToast(`Failed to save: ${err.message}`, 'error');
+      logger.error(TAG, 'Update failed', err);
+      showToast(`Failed to update: ${err.message}`, 'error');
     }
   }
+
+  // Tab bar height (mirrors _layout.tsx calculation)
+  const tabBarHeight = 56 + Math.max(insets.bottom, 4);
+
+  const TAB_ITEMS: { route: string; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+    { route: '/(tabs)', label: 'Add', icon: 'wallet-outline' },
+    { route: '/(tabs)/statistics', label: 'Statistics', icon: 'stats-chart-outline' },
+    { route: '/(tabs)/records', label: 'Records', icon: 'document-text-outline' },
+    { route: '/(tabs)/settings', label: 'Settings', icon: 'settings-outline' },
+  ];
 
   return (
     <ScreenContainer padBottom={false}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? tabBarHeight : 0}
       >
         <ScrollView
           ref={scrollViewRef}
           style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: tabBarHeight + 80 }]}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.screenTitle}>Add Transaction</Text>
+          {/* Header with back button */}
+          <View style={styles.header}>
+            <TouchableOpacity
+              style={styles.backBtn}
+              onPress={() => router.back()}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="arrow-back" size={24} color="#222" />
+            </TouchableOpacity>
+            <Text style={styles.screenTitle}>Edit Transaction</Text>
+          </View>
 
           {/* Row 0: Expense / Income toggle */}
           <SegmentedControl<TransactionType>
@@ -195,9 +240,8 @@ function AddTransactionScreen() {
             onSelect={setTransactionType}
           />
 
-          {/* Row 1: Amount + Currency + Tags */}
-          <View style={styles.row}>
-            <Text style={styles.sectionLabel}>Amount</Text>
+          {/* Row 1: Amount + Currency */}
+          <Card style={styles.row}>
             <View style={styles.amountRow}>
               <TouchableOpacity
                 style={styles.currencyBtn}
@@ -214,70 +258,67 @@ function AddTransactionScreen() {
                   name="amount"
                   render={({ field: { onChange, onBlur, value } }) => (
                     <Input
-                      ref={amountInputRef}
                       placeholder="0.00"
                       keyboardType="decimal-pad"
                       inputMode="decimal"
                       showSoftInputOnFocus={true}
                       value={value}
-                      onChangeText={(v) => {
-                        onChange(v);
-                        setAmountEntered(v.length > 0 && !isNaN(Number(v)) && Number(v) > 0);
-                      }}
+                      onChangeText={onChange}
                       onBlur={onBlur}
                       error={errors.amount?.message}
                       containerStyle={{ marginBottom: 0 }}
-                      style={{ paddingVertical: 6, paddingHorizontal: 8, fontSize: FONT_SIZE.md }}
                     />
                   )}
                 />
               </View>
-              {/* Currency quick-switch tags inline with amount */}
-              {[...new Set([settings.mainCurrency, ...settings.secondaryCurrencies, ...settings.frequentCurrencies])]
-                .filter(code => code !== selectedCurrency)
-                .slice(0, 6)
-                .map((code) => (
-                  <TouchableOpacity
-                    key={code}
-                    style={styles.currencyTag}
-                    onPress={() => setSelectedCurrency(code)}
-                  >
-                    <Text style={styles.currencyTagText}>{code}</Text>
-                  </TouchableOpacity>
-                ))}
-              <TouchableOpacity
-                style={styles.currencyEditBtn}
-                onPress={() => router.push('/currency-tags')}
-              >
-                <Ionicons name="create-outline" size={16} color="#E65100" />
-              </TouchableOpacity>
             </View>
-          </View>
 
-          {/* Row 2+3: Category (frequent + full picker) */}
-          <View style={[styles.row, !amountEntered && styles.blurred]}>
+            {/* Secondary currency quick-switch tags */}
+            {(settings.secondaryCurrencies.length > 0 || settings.frequentCurrencies.length > 0) && (
+              <View style={styles.currencyTagsRow}>
+                {[...new Set([settings.mainCurrency, ...settings.secondaryCurrencies, ...settings.frequentCurrencies])]
+                  .filter(code => code !== selectedCurrency)
+                  .slice(0, 6)
+                  .map((code) => (
+                    <TouchableOpacity
+                      key={code}
+                      style={styles.currencyTag}
+                      onPress={() => setSelectedCurrency(code)}
+                    >
+                      <Text style={styles.currencyTagText}>{code}</Text>
+                    </TouchableOpacity>
+                  ))}
+                <TouchableOpacity
+                  style={styles.currencyEditBtn}
+                  onPress={() => router.push('/currency-tags')}
+                >
+                  <Ionicons name="create-outline" size={16} color="#E65100" />
+                </TouchableOpacity>
+              </View>
+            )}
+          </Card>
+
+          {/* Row 2+3: Category */}
+          <View style={styles.row}>
             <Text style={styles.sectionLabel}>Category</Text>
             <CategoryPicker
               categories={currentCategories}
               selectedPath={categoryPath}
               onSelect={(path) => {
-                amountInputRef.current?.blur();
                 Keyboard.dismiss();
                 setCategoryPath(path);
               }}
               frequentCategories={frequentCats}
-              onEditFrequent={() => router.push('/frequent-categories')}
               onEditCategories={() => router.push('/category-edit')}
             />
           </View>
 
           {/* Row 4: Date */}
-          <View style={[styles.row, !amountEntered && styles.blurred]}>
+          <View style={styles.row}>
             <Text style={styles.sectionLabel}>Date</Text>
             <TouchableOpacity
               style={styles.dateBtn}
               onPress={() => setShowDatePicker(true)}
-              disabled={!amountEntered}
             >
               <Text style={styles.dateText}>{formatISODate(selectedDate)}</Text>
             </TouchableOpacity>
@@ -295,7 +336,7 @@ function AddTransactionScreen() {
           </View>
 
           {/* Row 5: One-off / Recurring */}
-          <View style={[styles.row, !canShowRecurring && styles.blurred]}>
+          <View style={styles.row}>
             <Text style={styles.sectionLabel}>Type</Text>
             <SegmentedControl
               options={[
@@ -304,13 +345,12 @@ function AddTransactionScreen() {
               ]}
               selected={isRecurring ? 'recurring' : 'oneoff'}
               onSelect={(v) => setIsRecurring(v === 'recurring')}
-              disabled={!canShowRecurring}
             />
           </View>
 
           {/* Row 6: Title */}
           <View
-            style={[styles.row, !canShowTitle && styles.blurred]}
+            style={styles.row}
             onLayout={(e) => { titleRowY.current = e.nativeEvent.layout.y; }}
           >
             <Controller
@@ -321,13 +361,9 @@ function AddTransactionScreen() {
                   label="Title (optional)"
                   placeholder="e.g. Lunch at cafe"
                   value={value}
-                  onChangeText={(v) => {
-                    onChange(v);
-                    setTitleEntered(v.length > 0);
-                  }}
+                  onChangeText={onChange}
                   onBlur={onBlur}
                   onFocus={() => scrollToInput(titleRowY)}
-                  editable={canShowTitle}
                 />
               )}
             />
@@ -335,7 +371,7 @@ function AddTransactionScreen() {
 
           {/* Row 7: Description */}
           <View
-            style={[styles.row, !canShowDescription && styles.blurred]}
+            style={styles.row}
             onLayout={(e) => { descRowY.current = e.nativeEvent.layout.y; }}
           >
             <Controller
@@ -351,26 +387,46 @@ function AddTransactionScreen() {
                   onFocus={() => scrollToInput(descRowY)}
                   multiline
                   numberOfLines={3}
-                  editable={canShowDescription}
                 />
               )}
             />
           </View>
 
-          {/* Spacer – extra room so keyboard can't cover the last input */}
-          <View style={{ height: 160 }} />
+          {/* Spacer — room for floating button + tab bar */}
+          <View style={{ height: 100 }} />
         </ScrollView>
 
-        {/* Floating Save Button */}
-        <View style={styles.floatingBtnContainer}>
+        {/* Floating Update Button — sits above the custom tab bar */}
+        <View style={[styles.floatingBtnContainer, { bottom: tabBarHeight }]}>
           <Button
-            title="Save"
+            title="Update"
             onPress={handleSubmit(onSubmit)}
             disabled={!canSave}
-            loading={addMutation.isPending}
+            loading={updateMutation.isPending}
             size="lg"
             style={styles.saveBtn}
           />
+        </View>
+
+        {/* Custom bottom tab bar — all icons inactive */}
+        <View style={[
+          styles.customTabBar,
+          {
+            height: tabBarHeight,
+            paddingBottom: Math.max(insets.bottom, 4),
+          },
+        ]}>
+          {TAB_ITEMS.map((tab) => (
+            <TouchableOpacity
+              key={tab.route}
+              style={styles.tabItem}
+              onPress={() => router.replace(tab.route as any)}
+              activeOpacity={0.6}
+            >
+              <Ionicons name={tab.icon} size={24} color="#999" />
+              <Text style={styles.tabLabel}>{tab.label}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
 
         {/* Currency Picker Modal */}
@@ -426,10 +482,10 @@ function AddTransactionScreen() {
   );
 }
 
-export default function AddTransactionWithBoundary() {
+export default function EditTransactionWithBoundary() {
   return (
-    <ErrorBoundary screenName="AddTransaction">
-      <AddTransactionScreen />
+    <ErrorBoundary screenName="EditTransaction">
+      <EditTransactionScreen />
     </ErrorBoundary>
   );
 }
@@ -437,19 +493,35 @@ export default function AddTransactionWithBoundary() {
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: SPACING.xxxl },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.lg,
+    marginTop: SPACING.sm,
+    gap: SPACING.sm,
+  },
+  backBtn: {
+    padding: SPACING.xs,
+    marginLeft: -SPACING.xs,
+  },
   screenTitle: {
     fontSize: FONT_SIZE.xxl,
     fontWeight: '800',
     color: '#222',
-    marginBottom: SPACING.lg,
-    marginTop: SPACING.sm,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: SPACING.md,
+  },
+  errorText: {
+    fontSize: FONT_SIZE.lg,
+    color: '#666',
+    fontWeight: '600',
   },
   row: {
     marginTop: SPACING.lg,
-  },
-  blurred: {
-    opacity: 0.35,
-    pointerEvents: 'none',
   },
   sectionLabel: {
     fontSize: FONT_SIZE.sm,
@@ -459,45 +531,54 @@ const styles = StyleSheet.create({
   },
   amountRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: 4,
-    rowGap: 6,
+    alignItems: 'flex-start',
+    gap: SPACING.sm,
   },
   currencyBtn: {
-    paddingVertical: 7,
-    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.sm + 2,
+    paddingHorizontal: SPACING.md,
     backgroundColor: '#E3F2FD',
-    borderRadius: 6,
+    borderRadius: 8,
+    marginTop: 2,
   },
   currencyText: {
-    fontSize: FONT_SIZE.sm,
+    fontSize: FONT_SIZE.md,
     fontWeight: '700',
     color: '#1565C0',
   },
   amountInput: {
-    width: 120,
+    flex: 1,
+  },
+  currencyTagsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: SPACING.xs,
+    marginTop: SPACING.md,
+    alignItems: 'center',
   },
   currencyTag: {
-    paddingVertical: 5,
-    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.sm - 2,
+    paddingHorizontal: SPACING.md,
     backgroundColor: '#F5F5F5',
     borderRadius: 6,
     borderWidth: 1,
     borderColor: '#E0E0E0',
+    minWidth: 55,
     alignItems: 'center',
   },
   currencyTagText: {
-    fontSize: FONT_SIZE.xs,
+    fontSize: FONT_SIZE.sm,
     fontWeight: '600',
     color: '#666',
   },
   currencyEditBtn: {
-    padding: 5,
+    paddingVertical: SPACING.xs - 2,
+    paddingHorizontal: SPACING.xs,
     backgroundColor: '#FFF3E0',
     borderRadius: 6,
     borderWidth: 1,
     borderColor: '#FFE0B2',
+    marginLeft: SPACING.xs,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -587,4 +668,25 @@ const styles = StyleSheet.create({
   },
   pickerCode: { fontSize: FONT_SIZE.md, fontWeight: '600', color: '#222' },
   pickerName: { fontSize: FONT_SIZE.xs, color: '#888' },
+  // Custom tab bar
+  customTabBar: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+  },
+  tabItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 6,
+  },
+  tabLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#999',
+    marginTop: 2,
+  },
 });

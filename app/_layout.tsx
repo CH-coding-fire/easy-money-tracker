@@ -38,6 +38,10 @@ export default function RootLayout() {
             options={{ presentation: 'modal', headerShown: true, title: 'Currency Settings' }}
           />
           <Stack.Screen
+            name="edit-transaction"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
             name="onboarding"
             options={{ presentation: 'fullScreenModal', gestureEnabled: false }}
           />

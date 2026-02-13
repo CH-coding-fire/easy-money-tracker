@@ -31,10 +31,6 @@ interface UIState {
   debugMode: boolean;
   setDebugMode: (enabled: boolean) => void;
 
-  // Edit transaction (pass ID to pre-fill form)
-  editingTransactionId: string | null;
-  setEditingTransactionId: (id: string | null) => void;
-
   // Toast
   toast: ToastConfig | null;
   showToast: (message: string, type?: 'success' | 'error' | 'info') => void;
@@ -75,13 +71,6 @@ export const useUIStore = create<UIState>((set) => ({
   setDebugMode: (enabled) => {
     logger.info(TAG, 'setDebugMode', { enabled });
     set({ debugMode: enabled });
-  },
-
-  // Editing
-  editingTransactionId: null,
-  setEditingTransactionId: (id) => {
-    logger.debug(TAG, 'setEditingTransactionId', { id });
-    set({ editingTransactionId: id });
   },
 
   // Toast

@@ -130,10 +130,10 @@ export async function saveCategories(categories: CategoryGroup): Promise<AppData
 
 // ── Settings helpers ───────────────────────────────────────────────────────
 
-export async function saveSettings(settings: Settings): Promise<AppData> {
-  logger.info(TAG, 'saveSettings: start');
+export async function saveSettings(partial: Partial<Settings>): Promise<AppData> {
+  logger.info(TAG, 'saveSettings: start', { keys: Object.keys(partial) });
   const data = await loadAppData();
-  data.settings = settings;
+  data.settings = { ...data.settings, ...partial };
   await saveAppData(data);
   logger.info(TAG, 'saveSettings: complete');
   return data;

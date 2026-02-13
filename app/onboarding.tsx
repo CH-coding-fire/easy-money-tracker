@@ -56,7 +56,6 @@ function OnboardingScreen() {
       // Complete onboarding — navigate only AFTER save succeeds
       saveMutation.mutate(
         {
-          ...settings,
           language: selectedLang,
           mainCurrency: selectedCurrency,
           secondaryCurrencies,
@@ -81,6 +80,22 @@ function OnboardingScreen() {
         ? prev.filter((c) => c !== code)
         : [...prev, code]
     );
+  }
+
+  function removeSecondary(code: string) {
+    setSecondaryCurrencies((prev) => prev.filter((c) => c !== code));
+  }
+
+  function moveSecondary(code: string, direction: 'up' | 'down') {
+    setSecondaryCurrencies((prev) => {
+      const idx = prev.indexOf(code);
+      if (idx === -1) return prev;
+      const newIdx = direction === 'up' ? idx - 1 : idx + 1;
+      if (newIdx < 0 || newIdx >= prev.length) return prev;
+      const next = [...prev];
+      [next[idx], next[newIdx]] = [next[newIdx], next[idx]];
+      return next;
+    });
   }
 
   const mainCurrencyInfo = ALL_CURRENCIES.find((c) => c.code === selectedCurrency);
@@ -179,6 +194,76 @@ function OnboardingScreen() {
               </View>
               <Ionicons name="chevron-down" size={20} color="#666" />
             </TouchableOpacity>
+
+            {/* Currency Order — same as currency-tags settings */}
+            {secondaryCurrencies.length > 0 && (
+              <View style={{ width: '100%' }}>
+                <Text style={[styles.sectionLabel, { marginTop: SPACING.lg }]}>Currency Order</Text>
+                <Text style={styles.sectionHint}>
+                  Use the arrows to reorder your currencies.
+                </Text>
+
+                {/* Main currency — fixed at top */}
+                {mainCurrencyInfo && (
+                  <View style={[styles.orderItem, styles.orderItemMain]}>
+                    <View style={styles.orderArrowPlaceholder} />
+                    <Text style={styles.orderSymbol}>{mainCurrencyInfo.symbol}</Text>
+                    <View style={styles.orderInfo}>
+                      <Text style={styles.orderCode}>{mainCurrencyInfo.code}</Text>
+                      <Text style={styles.orderName}>{mainCurrencyInfo.name}</Text>
+                    </View>
+                    <View style={styles.defaultBadge}>
+                      <Text style={styles.defaultBadgeText}>Default</Text>
+                    </View>
+                  </View>
+                )}
+
+                {/* Secondary currencies — reorderable */}
+                {secondaryCurrencies.map((code, idx) => {
+                  const info = ALL_CURRENCIES.find((c) => c.code === code);
+                  if (!info) return null;
+                  return (
+                    <View key={code} style={styles.orderItem}>
+                      <View style={styles.orderArrows}>
+                        <TouchableOpacity
+                          onPress={() => moveSecondary(code, 'up')}
+                          disabled={idx === 0}
+                          style={styles.arrowBtn}
+                        >
+                          <Ionicons
+                            name="chevron-up"
+                            size={16}
+                            color={idx === 0 ? '#ddd' : '#666'}
+                          />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => moveSecondary(code, 'down')}
+                          disabled={idx === secondaryCurrencies.length - 1}
+                          style={styles.arrowBtn}
+                        >
+                          <Ionicons
+                            name="chevron-down"
+                            size={16}
+                            color={idx === secondaryCurrencies.length - 1 ? '#ddd' : '#666'}
+                          />
+                        </TouchableOpacity>
+                      </View>
+                      <Text style={styles.orderSymbol}>{info.symbol}</Text>
+                      <View style={styles.orderInfo}>
+                        <Text style={styles.orderCode}>{info.code}</Text>
+                        <Text style={styles.orderName}>{info.name}</Text>
+                      </View>
+                      <TouchableOpacity
+                        style={styles.removeBtn}
+                        onPress={() => removeSecondary(code)}
+                      >
+                        <Ionicons name="close-circle" size={20} color="#F44336" />
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
           </View>
         )}
 
@@ -462,6 +547,57 @@ const styles = StyleSheet.create({
   currencyDropdownCode: { fontSize: FONT_SIZE.md, fontWeight: '700', color: '#222' },
   currencyDropdownName: { fontSize: FONT_SIZE.xs, color: '#888' },
   addCurrencyText: { fontSize: FONT_SIZE.sm, fontWeight: '600', color: '#2196F3' },
+  // Currency order items (matches currency-tags page)
+  orderItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: BORDER_RADIUS.md,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.sm,
+    marginBottom: SPACING.xs,
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
+  },
+  orderItemMain: {
+    borderColor: '#BBDEFB',
+    backgroundColor: '#F5F9FF',
+  },
+  orderArrows: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 26,
+  },
+  orderArrowPlaceholder: {
+    width: 26,
+  },
+  arrowBtn: {
+    padding: 1,
+  },
+  orderSymbol: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#333',
+    width: 32,
+    textAlign: 'center',
+  },
+  orderInfo: {
+    flex: 1,
+    marginLeft: SPACING.xs,
+  },
+  orderCode: { fontSize: FONT_SIZE.md, fontWeight: '700', color: '#222' },
+  orderName: { fontSize: FONT_SIZE.xs, color: '#888' },
+  defaultBadge: {
+    backgroundColor: '#E3F2FD',
+    paddingVertical: 2,
+    paddingHorizontal: SPACING.sm,
+    borderRadius: BORDER_RADIUS.sm,
+  },
+  defaultBadgeText: { fontSize: FONT_SIZE.xs, color: '#1565C0', fontWeight: '700' },
+  removeBtn: {
+    padding: SPACING.xs,
+  },
   // Week starts on
   weekRow: {
     flexDirection: 'row',

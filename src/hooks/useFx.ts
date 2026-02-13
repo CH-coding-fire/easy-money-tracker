@@ -24,7 +24,7 @@ export function useFxRates() {
 
       // Persist to settings if updated
       if (newCache.lastUpdatedAt !== settings.fxCache.lastUpdatedAt) {
-        saveSettings.mutate({ ...settings, fxCache: newCache });
+        saveSettings.mutate({ fxCache: newCache });
       }
       return newCache;
     },
@@ -44,7 +44,7 @@ export function useFxRates() {
     setLastFetchFailed(error);
 
     if (newCache.lastUpdatedAt !== settings.fxCache.lastUpdatedAt) {
-      saveSettings.mutate({ ...settings, fxCache: newCache });
+      saveSettings.mutate({ fxCache: newCache });
     }
     // Update React Query cache
     queryClient.setQueryData(['fxRates'], newCache);

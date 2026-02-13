@@ -6,6 +6,7 @@ import {
   FlatList,
   Modal,
   StyleSheet,
+  Keyboard,
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Category } from '../types';
@@ -35,6 +36,7 @@ export function CategoryPicker({
   const selectedLabel = selectedPath.length > 0 ? selectedPath.join(' > ') : 'Select category';
 
   function openPicker() {
+    Keyboard.dismiss();
     setDrillStack([{ items: categories, path: [] }]);
     setModalVisible(true);
   }
@@ -79,7 +81,15 @@ export function CategoryPicker({
 
   return (
     <View>
-      {/* Frequent category shortcuts */}
+      {/* Main picker button */}
+      <TouchableOpacity style={styles.pickerButton} onPress={openPicker}>
+        <Text style={[styles.pickerText, !selectedPath.length && { color: '#999' }]}>
+          {selectedLabel}
+        </Text>
+        <Ionicons name="chevron-down" size={14} color="#999" style={{ marginLeft: SPACING.sm }} />
+      </TouchableOpacity>
+
+      {/* Frequent category shortcuts — below the picker */}
       {frequentCategories.length > 0 && (
         <View style={styles.frequentRow}>
           {frequentCategories.map((path, i) => (
@@ -89,7 +99,10 @@ export function CategoryPicker({
                 styles.frequentChip,
                 selectedPath.join('>') === path.join('>') && styles.frequentChipActive,
               ]}
-              onPress={() => onSelect(path)}
+              onPress={() => {
+                Keyboard.dismiss();
+                onSelect(path);
+              }}
             >
               <Text
                 style={[
@@ -109,14 +122,6 @@ export function CategoryPicker({
           )}
         </View>
       )}
-
-      {/* Main picker button */}
-      <TouchableOpacity style={styles.pickerButton} onPress={openPicker}>
-        <Text style={[styles.pickerText, !selectedPath.length && { color: '#999' }]}>
-          {selectedLabel}
-        </Text>
-        <Ionicons name="chevron-down" size={14} color="#999" style={{ marginLeft: SPACING.sm }} />
-      </TouchableOpacity>
 
       {/* Drill-down modal */}
       <Modal visible={modalVisible} animationType="slide" presentationStyle="pageSheet">
@@ -195,7 +200,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: SPACING.xs,
-    marginBottom: SPACING.sm,
+    marginTop: SPACING.sm,
   },
   frequentChip: {
     paddingVertical: SPACING.xs,

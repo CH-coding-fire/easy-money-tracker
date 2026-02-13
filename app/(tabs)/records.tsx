@@ -14,7 +14,6 @@ import { ScreenContainer } from '../../src/components/ScreenContainer';
 import { Card } from '../../src/components/Card';
 import { ErrorBoundary } from '../../src/components/ErrorBoundary';
 import { useTransactions, useDeleteTransaction } from '../../src/hooks/useTransactions';
-import { useUIStore } from '../../src/store/uiStore';
 import { Transaction } from '../../src/types';
 import { SPACING, FONT_SIZE, BORDER_RADIUS } from '../../src/constants/spacing';
 import { logger } from '../../src/utils/logger';
@@ -25,8 +24,6 @@ function EditRecordsScreen() {
   const router = useRouter();
   const transactions = useTransactions();
   const deleteMutation = useDeleteTransaction();
-  const { setEditingTransactionId, setTransactionType } = useUIStore();
-
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'expense' | 'income'>('all');
 
@@ -58,9 +55,7 @@ function EditRecordsScreen() {
 
   function handleEdit(tx: Transaction) {
     logger.info(TAG, 'Edit transaction', { id: tx.id });
-    setEditingTransactionId(tx.id);
-    setTransactionType(tx.type);
-    router.push('/(tabs)');
+    router.push(`/edit-transaction?id=${tx.id}`);
   }
 
   function handleDelete(tx: Transaction) {

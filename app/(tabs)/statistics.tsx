@@ -1,35 +1,34 @@
-import React, { useMemo, useState, useEffect, useRef } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
-  Dimensions,
-  ActivityIndicator,
-} from 'react-native';
 import { useRouter } from 'expo-router';
-import { PieChart, BarChart } from 'react-native-gifted-charts';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Dimensions,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { BarChart } from 'react-native-gifted-charts';
 
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { ScreenContainer } from '../../src/components/ScreenContainer';
-import { SegmentedControl } from '../../src/components/SegmentedControl';
+import { BalanceBarChart } from '../../src/components/BalanceBarChart';
 import { Card } from '../../src/components/Card';
 import { ErrorBoundary } from '../../src/components/ErrorBoundary';
 import { PieChartWithLabels } from '../../src/components/PieChartWithLabels';
-import { BalanceBarChart } from '../../src/components/BalanceBarChart';
+import { ScreenContainer } from '../../src/components/ScreenContainer';
+import { SegmentedControl } from '../../src/components/SegmentedControl';
 
-import { useTransactions } from '../../src/hooks/useTransactions';
-import { useSettings } from '../../src/hooks/useSettings';
+import { BORDER_RADIUS, FONT_SIZE, SPACING } from '../../src/constants/spacing';
 import { useFxRates } from '../../src/hooks/useFx';
+import { useSettings } from '../../src/hooks/useSettings';
+import { useTransactions } from '../../src/hooks/useTransactions';
 import { useUIStore } from '../../src/store/uiStore';
-import { StatsMode, DateRangePreset, Transaction } from '../../src/types';
-import { SPACING, FONT_SIZE, BORDER_RADIUS } from '../../src/constants/spacing';
+import { DateRangePreset, StatsMode } from '../../src/types';
 import {
-  getDateRange,
-  shiftDateRange,
   formatDateRange,
-  parseLocalDate,
+  getDateRange,
+  shiftDateRange
 } from '../../src/utils/dateHelpers';
 import { convertCurrency } from '../../src/utils/fxConvert';
 
@@ -288,7 +287,7 @@ function StatisticsScreen() {
 
             {/* Secondary currency quick-switch tags */}
             <View style={styles.currencyTagsRow}>
-              {[...new Set([...settings.secondaryCurrencies, ...settings.frequentCurrencies])]
+              {[...new Set([settings.mainCurrency, ...settings.secondaryCurrencies, ...settings.frequentCurrencies])]
                 .filter(code => code !== statsCurrency)
                 .slice(0, 4)
                 .map((code) => (
