@@ -4,21 +4,31 @@ import { logger } from '../utils/logger';
 
 const TAG = 'FxService';
 const BASE_URL = 'https://api.frankfurter.app/latest';
-const CACHE_DURATION_MS = 6 * 60 * 60 * 1000; // 6 hours
+const CACHE_DURATION_MS = 3 * 60 * 60 * 1000; // 3 hours
+
+/** Check if the cache is stale (older than 3 hours) */
+export function isFxCacheStale(cache: FxCache): boolean {
+  if (!cache.lastUpdatedAt || Object.keys(cache.rates).length === 0) return true;
+  const elapsed = Date.now() - new Date(cache.lastUpdatedAt).getTime();
+  return elapsed >= CACHE_DURATION_MS;
+}
 
 /**
- * Fetch latest FX rates. Returns cached data if still fresh (< 6 hours old).
+ * Fetch latest FX rates.
+ * If force=false, returns cached data when still fresh (< 3 hours old).
+ * If force=true, always hits the API.
+ * On failure, returns the existing cache (stale data is better than no data).
  */
-export async function fetchFxRates(currentCache: FxCache): Promise<FxCache> {
-  // Check if cache is still valid
-  if (currentCache.lastUpdatedAt) {
-    const elapsed = Date.now() - new Date(currentCache.lastUpdatedAt).getTime();
-    if (elapsed < CACHE_DURATION_MS && Object.keys(currentCache.rates).length > 0) {
-      logger.debug(TAG, 'fetchFxRates: using cached rates', {
-        age: Math.round(elapsed / 60000) + ' min',
-      });
-      return currentCache;
-    }
+export async function fetchFxRates(
+  currentCache: FxCache,
+  force: boolean = false
+): Promise<{ cache: FxCache; error: boolean }> {
+  // Check if cache is still valid (skip if forced)
+  if (!force && !isFxCacheStale(currentCache)) {
+    logger.debug(TAG, 'fetchFxRates: using cached rates', {
+      age: Math.round((Date.now() - new Date(currentCache.lastUpdatedAt).getTime()) / 60000) + ' min',
+    });
+    return { cache: currentCache, error: false };
   }
 
   logger.info(TAG, 'fetchFxRates: fetching fresh rates from frankfurter.app');
@@ -37,9 +47,9 @@ export async function fetchFxRates(currentCache: FxCache): Promise<FxCache> {
       base: newCache.base,
       rateCount: Object.keys(newCache.rates).length,
     });
-    return newCache;
+    return { cache: newCache, error: false };
   } catch (err) {
     logger.error(TAG, 'fetchFxRates: failed, returning stale cache', err);
-    return currentCache;
+    return { cache: currentCache, error: true };
   }
 }

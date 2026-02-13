@@ -6,9 +6,10 @@ import {
   TouchableOpacity,
   StyleSheet,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { PieChart, BarChart, LineChart } from 'react-native-gifted-charts';
+import { PieChart, BarChart } from 'react-native-gifted-charts';
 
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { ScreenContainer } from '../../src/components/ScreenContainer';
@@ -16,6 +17,7 @@ import { SegmentedControl } from '../../src/components/SegmentedControl';
 import { Card } from '../../src/components/Card';
 import { ErrorBoundary } from '../../src/components/ErrorBoundary';
 import { PieChartWithLabels } from '../../src/components/PieChartWithLabels';
+import { BalanceBarChart } from '../../src/components/BalanceBarChart';
 
 import { useTransactions } from '../../src/hooks/useTransactions';
 import { useSettings } from '../../src/hooks/useSettings';
@@ -33,6 +35,17 @@ import { convertCurrency } from '../../src/utils/fxConvert';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CHART_WIDTH = SCREEN_WIDTH - SPACING.lg * 4;
+
+/** Shorten large Y-axis numbers: 1200 → 1.2K, 1500000 → 1.5M */
+function formatYAxisLabel(val: string): string {
+  const n = Number(val);
+  if (isNaN(n)) return val;
+  const abs = Math.abs(n);
+  const sign = n < 0 ? '-' : '';
+  if (abs >= 1_000_000) return `${sign}${(abs / 1_000_000).toFixed(1)}M`;
+  if (abs >= 1_000) return `${sign}${(abs / 1_000).toFixed(1)}K`;
+  return n % 1 === 0 ? String(n) : n.toFixed(1);
+}
 
 const PIE_COLORS = [
   '#2196F3', '#4CAF50', '#FF9800', '#9C27B0', '#F44336',
@@ -55,7 +68,9 @@ function StatisticsScreen() {
   const router = useRouter();
   const transactions = useTransactions();
   const settings = useSettings();
-  const { data: fxCache, isLoading: fxLoading, isFetching: fxFetching } = useFxRates();
+  const { data: fxCache, isLoading: fxLoading, isFetching: fxFetching, isError: fxError, forceRefresh: fxRefresh } = useFxRates();
+  const [fxRefreshing, setFxRefreshing] = useState(false);
+  const [showFxRates, setShowFxRates] = useState(false);
   const {
     statsMode, setStatsMode,
     statsDatePreset, setStatsDatePreset,
@@ -88,6 +103,17 @@ function StatisticsScreen() {
     setDateRange(newRange);
     setDrillCategory(null);
   }
+
+  // Currencies involved in ALL transactions within the date range (regardless of expense/income filter)
+  const involvedCurrencies = useMemo(() => {
+    const currencySet = new Set<string>();
+    for (const t of transactions) {
+      if (t.date >= dateRange.start && t.date <= dateRange.end) {
+        currencySet.add(t.currency);
+      }
+    }
+    return Array.from(currencySet);
+  }, [transactions, dateRange]);
 
   // Filter transactions within date range + convert currency
   const filteredTx = useMemo(() => {
@@ -173,18 +199,18 @@ function StatisticsScreen() {
     for (const t of filteredTx) {
       grouped[t.date] = (grouped[t.date] ?? 0) + t.convertedAmount;
     }
-    return Object.entries(grouped)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, value]) => ({
-        value: Math.round(value * 100) / 100,
-        label: date.slice(5), // MM-DD
-        frontColor: statsMode === 'expense_pie' ? '#F44336' : '#4CAF50',
-      }));
+    const entries = Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
+    const showEveryNth = entries.length > 10 ? Math.ceil(entries.length / 6) : 1;
+    return entries.map(([date, value], idx) => ({
+      value: Math.round(value * 100) / 100,
+      label: idx % showEveryNth === 0 ? date.slice(5) : '',
+      frontColor: statsMode === 'expense_pie' ? '#F44336' : '#4CAF50',
+    }));
   }, [filteredTx, statsMode]);
 
-  // ── Line chart data (balance mode) ───────────────────────────────────────
+  // ── Balance bar chart data ───────────────────────────────────────────────
 
-  const lineData = useMemo(() => {
+  const balanceBarData = useMemo(() => {
     if (statsMode !== 'balance_line') return [];
 
     const dailyNet: Record<string, number> = {};
@@ -195,22 +221,21 @@ function StatisticsScreen() {
       dailyNet[t.date] = (dailyNet[t.date] ?? 0) + sign * converted;
     }
 
-    // Cumulative balance
-    let cumulative = 0;
-    return Object.entries(dailyNet)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, net]) => {
-        cumulative += net;
-        return {
-          value: Math.round(cumulative * 100) / 100,
-          label: date.slice(5),
-          dataPointText: '',
-        };
-      });
+    const entries = Object.entries(dailyNet).sort(([a], [b]) => a.localeCompare(b));
+    const showEveryNth = entries.length > 10 ? Math.ceil(entries.length / 6) : 1;
+
+    return entries.map(([date, net], idx) => {
+      const val = Math.round(net * 100) / 100;
+      return {
+        value: val,
+        label: idx % showEveryNth === 0 ? date.slice(5) : '',
+        frontColor: val >= 0 ? '#4CAF50' : '#F44336',
+      };
+    });
   }, [transactions, statsMode, dateRange, statsCurrency, fxCache]);
 
   return (
-    <ScreenContainer>
+    <ScreenContainer padBottom={false}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Mode selector */}
         <SegmentedControl<StatsMode>
@@ -286,21 +311,84 @@ function StatisticsScreen() {
 
           {/* FX Update Info */}
           <View style={styles.fxInfoRow}>
-            {fxFetching ? (
-              <Text style={styles.fxInfoText}>⟳ Updating rates...</Text>
-            ) : fxCache.lastUpdatedAt ? (
-              <Text style={styles.fxInfoText}>
-                Updated: {new Date(fxCache.lastUpdatedAt).toLocaleString('en-US', { 
-                  month: 'short', 
-                  day: 'numeric', 
-                  hour: '2-digit', 
-                  minute: '2-digit' 
-                })} • frankfurter.app
-              </Text>
-            ) : (
-              <Text style={styles.fxInfoText}>No FX rates loaded</Text>
-            )}
+            <View style={styles.fxInfoLeft}>
+              {(fxFetching || fxRefreshing) ? (
+                <View style={styles.fxLoadingRow}>
+                  <ActivityIndicator size="small" color="#2196F3" style={{ marginRight: 4 }} />
+                  <Text style={styles.fxInfoText}>Updating...</Text>
+                </View>
+              ) : fxError ? (
+                <Text style={[styles.fxInfoText, { color: '#F44336' }]}>
+                  Update failed • using previous rates
+                </Text>
+              ) : fxCache.lastUpdatedAt ? (
+                <Text style={styles.fxInfoText}>
+                  Updated: {new Date(fxCache.lastUpdatedAt).toLocaleString('en-US', { 
+                    month: 'short', 
+                    day: 'numeric', 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                  })}
+                </Text>
+              ) : (
+                <Text style={styles.fxInfoText}>No FX rates loaded</Text>
+              )}
+            </View>
+            <View style={styles.fxActions}>
+              {/* Show rates button */}
+              <TouchableOpacity
+                style={styles.fxSmallBtn}
+                onPress={() => setShowFxRates(!showFxRates)}
+              >
+                <Ionicons
+                  name={showFxRates ? 'chevron-up' : 'information-circle-outline'}
+                  size={14}
+                  color="#2196F3"
+                />
+              </TouchableOpacity>
+              {/* Refresh button */}
+              <TouchableOpacity
+                style={styles.fxSmallBtn}
+                disabled={fxFetching || fxRefreshing}
+                onPress={async () => {
+                  setFxRefreshing(true);
+                  await fxRefresh();
+                  setFxRefreshing(false);
+                }}
+              >
+                <Ionicons name="refresh" size={14} color={(fxFetching || fxRefreshing) ? '#ccc' : '#2196F3'} />
+              </TouchableOpacity>
+            </View>
           </View>
+
+          {/* Expandable FX rates – only currencies involved in transactions */}
+          {showFxRates && fxCache.lastUpdatedAt && (
+            <View style={styles.fxRatesBox}>
+              <Text style={styles.fxRatesTitle}>
+                Rates (base: {statsCurrency})
+              </Text>
+              <View style={styles.fxRatesGrid}>
+                {involvedCurrencies
+                  .filter((code) => code !== statsCurrency)
+                  .sort()
+                  .map((code) => {
+                    // Compute cross-rate: 1 statsCurrency = ? code
+                    const crossRate = convertCurrency(1, statsCurrency, code, fxCache);
+                    if (crossRate === 1 && statsCurrency !== code) return null; // no rate available
+                    return (
+                      <Text key={code} style={styles.fxRateItem}>
+                        {code}:{'  '}{crossRate.toFixed(4)}
+                      </Text>
+                    );
+                  })}
+                {involvedCurrencies.filter((c) => c !== statsCurrency).length === 0 && (
+                  <Text style={styles.fxRateItem}>
+                    All transactions are in {statsCurrency}
+                  </Text>
+                )}
+              </View>
+            </View>
+          )}
         </Card>
 
         {/* Total */}
@@ -388,10 +476,13 @@ function StatisticsScreen() {
                   data={barData}
                   barWidth={Math.max(8, Math.min(24, CHART_WIDTH / barData.length - 4))}
                   spacing={4}
+                  height={180}
                   xAxisLabelTextStyle={styles.axisLabel}
                   yAxisTextStyle={styles.axisLabel}
+                  yAxisLabelWidth={40}
+                  formatYLabel={formatYAxisLabel}
                   noOfSections={4}
-                  width={CHART_WIDTH}
+                  width={CHART_WIDTH - 44}
                   hideRules
                   barBorderRadius={4}
                   isAnimated
@@ -403,34 +494,18 @@ function StatisticsScreen() {
           </>
         )}
 
-        {/* Balance line chart */}
+        {/* Balance bar chart */}
         {statsMode === 'balance_line' && (
           <Card style={styles.chartCard}>
             <View style={styles.chartTitleRow}>
-              <Text style={styles.chartTitle}>Net Balance Over Time</Text>
+              <Text style={styles.chartTitle}>Net Balance</Text>
               <Text style={styles.chartCurrency}>{statsCurrency}</Text>
             </View>
-            {lineData.length > 0 ? (
-              <LineChart
-                data={lineData}
-                width={CHART_WIDTH}
-                height={200}
-                color="#2196F3"
-                thickness={2}
-                dataPointsColor="#2196F3"
-                xAxisLabelTextStyle={styles.axisLabel}
-                yAxisTextStyle={styles.axisLabel}
-                noOfSections={4}
-                hideRules
-                curved
-                isAnimated
-                startFillColor="rgba(33,150,243,0.15)"
-                endFillColor="rgba(33,150,243,0.01)"
-                areaChart
-              />
-            ) : (
-              <Text style={styles.noData}>No data for this period</Text>
-            )}
+            <BalanceBarChart
+              data={balanceBarData}
+              height={220}
+              currency={statsCurrency}
+            />
           </Card>
         )}
 
@@ -537,12 +612,51 @@ const styles = StyleSheet.create({
   },
   fxInfoRow: {
     marginTop: SPACING.xs,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  fxInfoLeft: {
+    flex: 1,
   },
   fxInfoText: {
     fontSize: 9,
     color: '#999',
-    textAlign: 'center',
+  },
+  fxLoadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  fxActions: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  fxSmallBtn: {
+    padding: 4,
+    borderRadius: 4,
+    backgroundColor: '#f5f5f5',
+  },
+  fxRatesBox: {
+    marginTop: SPACING.xs,
+    backgroundColor: '#fafafa',
+    borderRadius: BORDER_RADIUS.sm,
+    padding: SPACING.sm,
+  },
+  fxRatesTitle: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#888',
+    marginBottom: 4,
+  },
+  fxRatesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: SPACING.sm,
+  },
+  fxRateItem: {
+    fontSize: 9,
+    color: '#666',
+    fontFamily: 'monospace',
   },
   totalCard: { 
     marginBottom: SPACING.md, 

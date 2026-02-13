@@ -125,7 +125,7 @@ function EditRecordsScreen() {
   }
 
   return (
-    <ScreenContainer>
+    <ScreenContainer padBottom={false}>
       <Text style={styles.screenTitle}>Records</Text>
 
       {/* Search bar */}

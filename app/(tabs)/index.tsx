@@ -9,6 +9,9 @@ import {
   KeyboardAvoidingView,
   TextInput,
   Keyboard,
+  Modal,
+  FlatList,
+  Pressable,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
@@ -32,7 +35,8 @@ import { useSettings } from '../../src/hooks/useSettings';
 import { useAddTransaction, useUpdateTransaction, useTransactions } from '../../src/hooks/useTransactions';
 import { useUIStore } from '../../src/store/uiStore';
 import { TransactionType, Transaction } from '../../src/types';
-import { SPACING, FONT_SIZE } from '../../src/constants/spacing';
+import { SPACING, FONT_SIZE, BORDER_RADIUS } from '../../src/constants/spacing';
+import { ALL_CURRENCIES } from '../../src/constants/currencies';
 import { todayISO, nowISO, parseLocalDate, formatISODate } from '../../src/utils/dateHelpers';
 import { logger } from '../../src/utils/logger';
 
@@ -90,6 +94,16 @@ function AddTransactionScreen() {
   );
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isRecurring, setIsRecurring] = useState(editingTx?.isRecurring ?? false);
+  const [currencyPickerVisible, setCurrencyPickerVisible] = useState(false);
+  const [currencySearch, setCurrencySearch] = useState('');
+
+  const filteredCurrencies = currencySearch.trim()
+    ? ALL_CURRENCIES.filter(
+        (c) =>
+          c.code.toLowerCase().includes(currencySearch.toLowerCase()) ||
+          c.name.toLowerCase().includes(currencySearch.toLowerCase())
+      )
+    : ALL_CURRENCIES;
 
   const {
     control,
@@ -190,11 +204,15 @@ function AddTransactionScreen() {
           {/* Row 1: Amount + Currency */}
           <Card style={styles.row}>
             <View style={styles.amountRow}>
-              <View style={styles.currencyBtn}>
+              <TouchableOpacity
+                style={styles.currencyBtn}
+                onPress={() => { setCurrencySearch(''); setCurrencyPickerVisible(true); }}
+                activeOpacity={0.7}
+              >
                 <Text style={styles.currencyText}>
                   {selectedCurrency}
                 </Text>
-              </View>
+              </TouchableOpacity>
               <View style={styles.amountInput}>
                 <Controller
                   control={control}
@@ -254,6 +272,7 @@ function AddTransactionScreen() {
               selectedPath={categoryPath}
               onSelect={setCategoryPath}
               frequentCategories={frequentCats}
+              onEditCategories={() => router.push('/category-edit')}
             />
           </View>
 
@@ -350,6 +369,55 @@ function AddTransactionScreen() {
             style={styles.saveBtn}
           />
         </View>
+
+        {/* Currency Picker Modal */}
+        <Modal visible={currencyPickerVisible} animationType="slide" transparent>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Select Currency</Text>
+                <Pressable onPress={() => setCurrencyPickerVisible(false)}>
+                  <Ionicons name="close" size={24} color="#666" />
+                </Pressable>
+              </View>
+              <TextInput
+                style={styles.modalSearch}
+                placeholder="Search currencies..."
+                value={currencySearch}
+                onChangeText={setCurrencySearch}
+                placeholderTextColor="#999"
+                autoFocus
+              />
+              <FlatList
+                data={filteredCurrencies}
+                keyExtractor={(item) => item.code}
+                keyboardShouldPersistTaps="handled"
+                renderItem={({ item }) => {
+                  const isSelected = item.code === selectedCurrency;
+                  return (
+                    <Pressable
+                      style={[styles.pickerRow, isSelected && styles.pickerRowSelected]}
+                      onPress={() => {
+                        setSelectedCurrency(item.code);
+                        setCurrencyPickerVisible(false);
+                        setCurrencySearch('');
+                        logger.info(TAG, 'Currency selected from picker', { code: item.code });
+                      }}
+                    >
+                      <Text style={styles.pickerSymbol}>{item.symbol}</Text>
+                      <View style={styles.pickerInfo}>
+                        <Text style={styles.pickerCode}>{item.code}</Text>
+                        <Text style={styles.pickerName}>{item.name}</Text>
+                      </View>
+                      {isSelected && <Ionicons name="checkmark-circle" size={22} color="#1565C0" />}
+                    </Pressable>
+                  );
+                }}
+                contentContainerStyle={{ paddingBottom: SPACING.lg }}
+              />
+            </View>
+          </View>
+        </Modal>
       </KeyboardAvoidingView>
     </ScreenContainer>
   );
@@ -464,4 +532,65 @@ const styles = StyleSheet.create({
   saveBtn: {
     width: '100%',
   },
+  // Currency picker modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: BORDER_RADIUS.lg,
+    borderTopRightRadius: BORDER_RADIUS.lg,
+    maxHeight: '80%',
+    paddingBottom: SPACING.xl,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.lg,
+    paddingBottom: SPACING.sm,
+  },
+  modalTitle: {
+    fontSize: FONT_SIZE.lg,
+    fontWeight: '700',
+    color: '#222',
+  },
+  modalSearch: {
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: BORDER_RADIUS.md,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    fontSize: FONT_SIZE.md,
+    marginHorizontal: SPACING.lg,
+    marginBottom: SPACING.sm,
+    backgroundColor: '#fafafa',
+  },
+  pickerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.lg,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#f0f0f0',
+  },
+  pickerRowSelected: {
+    backgroundColor: '#E3F2FD',
+  },
+  pickerSymbol: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#333',
+    width: 36,
+    textAlign: 'center',
+  },
+  pickerInfo: {
+    flex: 1,
+    marginLeft: SPACING.sm,
+  },
+  pickerCode: { fontSize: FONT_SIZE.md, fontWeight: '600', color: '#222' },
+  pickerName: { fontSize: FONT_SIZE.xs, color: '#888' },
 });

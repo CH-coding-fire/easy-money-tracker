@@ -90,7 +90,7 @@ function SettingsScreen() {
   const selectedLang = LANGUAGES.find((l) => l.code === settings.language)?.label ?? settings.language;
 
   return (
-    <ScreenContainer>
+    <ScreenContainer padBottom={false}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <Text style={styles.screenTitle}>Settings</Text>
 
@@ -195,7 +195,6 @@ function SettingsScreen() {
           </>
         )}
 
-        <View style={{ height: SPACING.xxxl }} />
       </ScrollView>
 
       {/* Language picker modal */}

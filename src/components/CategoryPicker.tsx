@@ -18,6 +18,7 @@ interface CategoryPickerProps {
   onSelect: (path: string[]) => void;
   frequentCategories?: string[][]; // quick-pick paths
   onEditFrequent?: () => void;
+  onEditCategories?: () => void;
 }
 
 export function CategoryPicker({
@@ -26,6 +27,7 @@ export function CategoryPicker({
   onSelect,
   frequentCategories = [],
   onEditFrequent,
+  onEditCategories,
 }: CategoryPickerProps) {
   const [drillStack, setDrillStack] = useState<{ items: Category[]; path: string[] }[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
@@ -133,6 +135,17 @@ export function CategoryPicker({
             <Text style={styles.modalTitle} numberOfLines={1}>
               {currentPath.length > 0 ? currentPath.join(' > ') : 'Select Category'}
             </Text>
+            {onEditCategories && (
+              <TouchableOpacity
+                style={styles.editCategoriesBtn}
+                onPress={() => {
+                  setModalVisible(false);
+                  onEditCategories();
+                }}
+              >
+                <Ionicons name="create-outline" size={18} color="#2196F3" />
+              </TouchableOpacity>
+            )}
           </View>
 
           <FlatList
@@ -249,6 +262,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#222',
     flex: 1,
+  },
+  editCategoriesBtn: {
+    padding: SPACING.sm,
+    marginLeft: SPACING.xs,
   },
   categoryRow: {
     flexDirection: 'row',
