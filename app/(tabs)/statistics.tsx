@@ -327,7 +327,7 @@ function StatisticsScreen() {
                     day: 'numeric', 
                     hour: '2-digit', 
                     minute: '2-digit' 
-                  })}
+                  })} • Source: frankfurter.app
                 </Text>
               ) : (
                 <Text style={styles.fxInfoText}>No FX rates loaded</Text>
