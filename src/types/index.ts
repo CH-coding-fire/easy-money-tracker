@@ -48,6 +48,47 @@ export interface FxCache {
   rates: Record<string, number>;
 }
 
+// ── Theme ──────────────────────────────────────────────────────────────────
+
+export type ThemeMode = 
+  | 'light' 
+  | 'dark' 
+  | 'amoled' 
+  | 'high_contrast' 
+  | 'pastel' 
+  | 'finance' 
+  | 'auto';
+
+export interface Theme {
+  // Background colors
+  background: string;
+  cardBackground: string;
+  
+  // Text colors
+  text: {
+    primary: string;
+    secondary: string;
+    tertiary: string;
+  };
+  
+  // Primary colors
+  primary: string;
+  success: string;
+  error: string;
+  warning: string;
+  
+  // Borders and dividers
+  border: string;
+  divider: string;
+  
+  // Chart colors
+  chartColors: string[];
+  
+  // Effects
+  shadow: string;
+  overlay: string;
+}
+
 export interface Settings {
   language: string;
   mainCurrency: string;
@@ -60,6 +101,7 @@ export interface Settings {
   categoryLevelMode: 'auto'; // auto = drill if subcategories exist
   frequentExpenseCategories: string[][]; // paths like [["Food","Delivery"]]
   frequentIncomeCategories: string[][];
+  themeMode: ThemeMode;
 }
 
 export interface AppData {

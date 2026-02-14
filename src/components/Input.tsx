@@ -8,6 +8,7 @@ import {
   ViewStyle,
 } from 'react-native';
 import { SPACING, BORDER_RADIUS, FONT_SIZE } from '../constants/spacing';
+import { useTheme } from '../hooks/useTheme';
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -17,17 +18,27 @@ interface InputProps extends TextInputProps {
 
 export const Input = forwardRef<TextInput, InputProps>(
   ({ label, error, containerStyle, style, ...rest }, ref) => {
+    const theme = useTheme();
+    
     return (
       <View style={[styles.container, containerStyle]}>
-        {label && <Text style={styles.label}>{label}</Text>}
+        {label && <Text style={[styles.label, { color: theme.text.primary }]}>{label}</Text>}
         <TextInput
           ref={ref}
-          style={[styles.input, error ? styles.inputError : undefined, style]}
-          placeholderTextColor="#999"
+          style={[
+            styles.input,
+            {
+              borderColor: error ? theme.error : theme.border,
+              color: theme.text.primary,
+              backgroundColor: theme.cardBackground,
+            },
+            style,
+          ]}
+          placeholderTextColor={theme.text.tertiary}
           accessibilityLabel={label}
           {...rest}
         />
-        {error && <Text style={styles.error}>{error}</Text>}
+        {error && <Text style={[styles.error, { color: theme.error }]}>{error}</Text>}
       </View>
     );
   }
@@ -40,24 +51,16 @@ const styles = StyleSheet.create({
   label: {
     fontSize: FONT_SIZE.sm,
     fontWeight: '600',
-    color: '#333',
     marginBottom: SPACING.xs,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
     borderRadius: BORDER_RADIUS.md,
     paddingVertical: SPACING.sm,
     paddingHorizontal: SPACING.md,
     fontSize: FONT_SIZE.md,
-    color: '#222',
-    backgroundColor: '#fff',
-  },
-  inputError: {
-    borderColor: '#F44336',
   },
   error: {
-    color: '#F44336',
     fontSize: FONT_SIZE.xs,
     marginTop: SPACING.xs,
   },

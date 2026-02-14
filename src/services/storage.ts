@@ -25,6 +25,7 @@ export function getDefaultSettings(): Settings {
     categoryLevelMode: 'auto',
     frequentExpenseCategories: [],
     frequentIncomeCategories: [],
+    themeMode: 'light',
   };
 }
 

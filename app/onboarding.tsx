@@ -17,10 +17,13 @@ import { Button } from '../src/components/Button';
 import { Card } from '../src/components/Card';
 import { ErrorBoundary } from '../src/components/ErrorBoundary';
 import { useSettings, useSaveSettings } from '../src/hooks/useSettings';
+import { useTheme } from '../src/hooks/useTheme';
 import { LANGUAGES } from '../src/constants/languages';
 import { ALL_CURRENCIES } from '../src/constants/currencies';
+import { THEME_OPTIONS } from '../src/constants/themes';
 import { SPACING, FONT_SIZE, BORDER_RADIUS } from '../src/constants/spacing';
 import { logger } from '../src/utils/logger';
+import type { ThemeMode } from '../src/types';
 
 const TAG = 'OnboardingScreen';
 
@@ -29,12 +32,14 @@ function OnboardingScreen() {
   const settings = useSettings();
   const saveMutation = useSaveSettings();
   const insets = useSafeAreaInsets();
+  const theme = useTheme();
 
   const [step, setStep] = useState(0); // 0=lang, 1=currency, 2=preferences, 3=education
   const [selectedLang, setSelectedLang] = useState(settings.language);
   const [selectedCurrency, setSelectedCurrency] = useState(settings.mainCurrency);
   const [secondaryCurrencies, setSecondaryCurrencies] = useState<string[]>(settings.secondaryCurrencies);
   const [selectedWeekStart, setSelectedWeekStart] = useState<'monday' | 'sunday'>(settings.weekStartsOn);
+  const [selectedTheme, setSelectedTheme] = useState<ThemeMode>(settings.themeMode || 'light');
 
   // Currency picker state
   const [showCurrencyDropdown, setShowCurrencyDropdown] = useState(false);
@@ -61,11 +66,17 @@ function OnboardingScreen() {
           secondaryCurrencies,
           frequentCurrencies: [selectedCurrency, ...secondaryCurrencies.slice(0, 2)],
           weekStartsOn: selectedWeekStart,
+          themeMode: selectedTheme,
           onboardingComplete: true,
         },
         {
           onSuccess: () => {
-            logger.info(TAG, 'Onboarding complete', { lang: selectedLang, currency: selectedCurrency, weekStartsOn: selectedWeekStart });
+            logger.info(TAG, 'Onboarding complete', {
+              lang: selectedLang,
+              currency: selectedCurrency,
+              weekStartsOn: selectedWeekStart,
+              theme: selectedTheme,
+            });
             router.replace('/(tabs)');
           },
         }
@@ -271,18 +282,70 @@ function OnboardingScreen() {
         {step === 2 && (
           <View style={styles.stepContainer}>
             <Ionicons name="settings-outline" size={56} color="#FF9800" style={{ marginBottom: SPACING.md }} />
-            <Text style={styles.title}>Set Your Preferences</Text>
-            <Text style={styles.subtitle}>Customize how you view your data</Text>
+            <Text style={[styles.title, { color: theme.text.primary }]}>Set Your Preferences</Text>
+            <Text style={[styles.subtitle, { color: theme.text.secondary }]}>Customize how you view your data</Text>
 
-            <Text style={styles.sectionLabel}>Week Starts On</Text>
+            {/* Theme Selection */}
+            <Text style={[styles.sectionLabel, { color: theme.text.primary }]}>Theme</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.themeScroll}>
+              {THEME_OPTIONS.slice(0, -1).map((themeOpt) => (
+                <TouchableOpacity
+                  key={themeOpt.mode}
+                  style={[
+                    styles.themeCard,
+                    { 
+                      backgroundColor: theme.cardBackground,
+                      borderColor: theme.border,
+                    },
+                    selectedTheme === themeOpt.mode && {
+                      borderColor: theme.primary,
+                      borderWidth: 2,
+                    },
+                  ]}
+                  onPress={() => setSelectedTheme(themeOpt.mode)}
+                >
+                  <Ionicons
+                    name={themeOpt.icon as any}
+                    size={32}
+                    color={selectedTheme === themeOpt.mode ? theme.primary : theme.text.secondary}
+                  />
+                  <Text style={[
+                    styles.themeCardLabel,
+                    { color: theme.text.primary },
+                    selectedTheme === themeOpt.mode && { fontWeight: '700' },
+                  ]}>
+                    {themeOpt.label}
+                  </Text>
+                  {selectedTheme === themeOpt.mode && (
+                    <Ionicons name="checkmark-circle" size={20} color={theme.primary} style={styles.themeCheckmark} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            <Text style={[styles.sectionLabel, { color: theme.text.primary, marginTop: SPACING.xl }]}>Week Starts On</Text>
             <View style={styles.weekRow}>
               {(['monday', 'sunday'] as const).map((day) => (
                 <TouchableOpacity
                   key={day}
-                  style={[styles.weekBtn, selectedWeekStart === day && styles.weekBtnActive]}
+                  style={[
+                    styles.weekBtn,
+                    { 
+                      backgroundColor: theme.border,
+                      borderColor: theme.border,
+                    },
+                    selectedWeekStart === day && {
+                      backgroundColor: theme.primary,
+                      borderColor: theme.primary,
+                    },
+                  ]}
                   onPress={() => setSelectedWeekStart(day)}
                 >
-                  <Text style={[styles.weekBtnText, selectedWeekStart === day && styles.weekBtnTextActive]}>
+                  <Text style={[
+                    styles.weekBtnText,
+                    { color: theme.text.secondary },
+                    selectedWeekStart === day && styles.weekBtnTextActive,
+                  ]}>
                     {day.charAt(0).toUpperCase() + day.slice(1)}
                   </Text>
                 </TouchableOpacity>
@@ -608,23 +671,41 @@ const styles = StyleSheet.create({
   weekBtn: {
     flex: 1,
     paddingVertical: SPACING.lg,
-    backgroundColor: '#f0f0f0',
     borderRadius: BORDER_RADIUS.md,
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#f0f0f0',
-  },
-  weekBtnActive: {
-    backgroundColor: '#2196F3',
-    borderColor: '#2196F3',
   },
   weekBtnText: {
     fontSize: FONT_SIZE.md,
     fontWeight: '600',
-    color: '#666',
   },
   weekBtnTextActive: {
     color: '#fff',
+  },
+  // Theme cards
+  themeScroll: {
+    width: '100%',
+    marginTop: SPACING.sm,
+  },
+  themeCard: {
+    width: 100,
+    height: 100,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: SPACING.sm,
+    padding: SPACING.sm,
+  },
+  themeCardLabel: {
+    fontSize: FONT_SIZE.xs,
+    marginTop: SPACING.xs,
+    textAlign: 'center',
+  },
+  themeCheckmark: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
   },
   // Education
   featureCard: { width: '100%', marginBottom: SPACING.md, alignItems: 'center' },

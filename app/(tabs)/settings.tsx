@@ -20,8 +20,10 @@ import { DebugPanel } from '../../src/components/DebugPanel';
 import { ErrorBoundary } from '../../src/components/ErrorBoundary';
 
 import { useSettings, useSaveSettings } from '../../src/hooks/useSettings';
+import { useTheme } from '../../src/hooks/useTheme';
 import { exportData, importData } from '../../src/services/exportService';
 import { LANGUAGES } from '../../src/constants/languages';
+import { THEME_OPTIONS } from '../../src/constants/themes';
 import { SPACING, FONT_SIZE, BORDER_RADIUS } from '../../src/constants/spacing';
 import { logger } from '../../src/utils/logger';
 import { useQueryClient } from '@tanstack/react-query';
@@ -35,8 +37,10 @@ function SettingsScreen() {
   const saveMutation = useSaveSettings();
   const qc = useQueryClient();
   const { showToast } = useUIStore();
+  const theme = useTheme();
 
   const [showLangPicker, setShowLangPicker] = useState(false);
+  const [showThemePicker, setShowThemePicker] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
 
@@ -87,60 +91,86 @@ function SettingsScreen() {
     setShowLangPicker(false);
   }
 
+  function handleThemeSelect(mode: string) {
+    logger.info(TAG, 'Theme changed', { mode });
+    saveMutation.mutate({ themeMode: mode as any });
+    setShowThemePicker(false);
+  }
+
   const selectedLang = LANGUAGES.find((l) => l.code === settings.language)?.label ?? settings.language;
+  const selectedTheme = THEME_OPTIONS.find((t) => t.mode === settings.themeMode)?.label ?? 'Light';
 
   return (
     <ScreenContainer padBottom={false}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        <Text style={styles.screenTitle}>Settings</Text>
+        <Text style={[styles.screenTitle, { color: theme.text.primary }]}>Settings</Text>
+
+        {/* Theme */}
+        <Card style={styles.settingCard}>
+          <Text style={[styles.settingLabel, { color: theme.text.secondary }]}>Theme</Text>
+          <TouchableOpacity style={styles.settingValue} onPress={() => setShowThemePicker(true)}>
+            <Text style={[styles.valueText, { color: theme.text.primary }]}>{selectedTheme}</Text>
+            <Ionicons name="chevron-down" size={16} color={theme.text.tertiary} />
+          </TouchableOpacity>
+        </Card>
 
         {/* Language */}
         <Card style={styles.settingCard}>
-          <Text style={styles.settingLabel}>Language</Text>
+          <Text style={[styles.settingLabel, { color: theme.text.secondary }]}>Language</Text>
           <TouchableOpacity style={styles.settingValue} onPress={() => setShowLangPicker(true)}>
-            <Text style={styles.valueText}>{selectedLang}</Text>
-            <Ionicons name="chevron-down" size={16} color="#999" />
+            <Text style={[styles.valueText, { color: theme.text.primary }]}>{selectedLang}</Text>
+            <Ionicons name="chevron-down" size={16} color={theme.text.tertiary} />
           </TouchableOpacity>
         </Card>
 
         {/* Currency */}
         <Card style={styles.settingCard}>
-          <Text style={styles.settingLabel}>Default Currency</Text>
+          <Text style={[styles.settingLabel, { color: theme.text.secondary }]}>Default Currency</Text>
           <TouchableOpacity style={styles.settingValue} onPress={() => router.push('/currency-tags')}>
-            <Text style={styles.valueText}>{settings.mainCurrency}</Text>
-            <Ionicons name="chevron-forward" size={16} color="#999" />
+            <Text style={[styles.valueText, { color: theme.text.primary }]}>{settings.mainCurrency}</Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
           </TouchableOpacity>
         </Card>
 
         {/* Categories */}
         <Card style={styles.settingCard}>
-          <Text style={styles.settingLabel}>Categories</Text>
+          <Text style={[styles.settingLabel, { color: theme.text.secondary }]}>Categories</Text>
           <TouchableOpacity style={styles.settingValue} onPress={() => router.push('/category-edit')}>
-            <Text style={styles.valueText}>Edit Categories</Text>
-            <Ionicons name="chevron-forward" size={16} color="#999" />
+            <Text style={[styles.valueText, { color: theme.text.primary }]}>Edit Categories</Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
           </TouchableOpacity>
         </Card>
 
         {/* Frequent Categories */}
         <Card style={styles.settingCard}>
-          <Text style={styles.settingLabel}>Frequent Categories</Text>
+          <Text style={[styles.settingLabel, { color: theme.text.secondary }]}>Frequent Categories</Text>
           <TouchableOpacity style={styles.settingValue} onPress={() => router.push('/frequent-categories')}>
-            <Text style={styles.valueText}>Edit Frequent Categories</Text>
-            <Ionicons name="chevron-forward" size={16} color="#999" />
+            <Text style={[styles.valueText, { color: theme.text.primary }]}>Edit Frequent Categories</Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
           </TouchableOpacity>
         </Card>
 
         {/* Week starts on */}
         <Card style={styles.settingCard}>
-          <Text style={styles.settingLabel}>Week Starts On</Text>
+          <Text style={[styles.settingLabel, { color: theme.text.secondary }]}>Week Starts On</Text>
           <View style={styles.weekRow}>
             {(['monday', 'sunday'] as const).map((day) => (
               <TouchableOpacity
                 key={day}
-                style={[styles.weekBtn, settings.weekStartsOn === day && styles.weekBtnActive]}
+                style={[
+                  styles.weekBtn,
+                  { backgroundColor: theme.border },
+                  settings.weekStartsOn === day && { backgroundColor: theme.primary },
+                ]}
                 onPress={() => saveMutation.mutate({ weekStartsOn: day })}
               >
-                <Text style={[styles.weekBtnText, settings.weekStartsOn === day && styles.weekBtnTextActive]}>
+                <Text
+                  style={[
+                    styles.weekBtnText,
+                    { color: theme.text.secondary },
+                    settings.weekStartsOn === day && styles.weekBtnTextActive,
+                  ]}
+                >
                   {day.charAt(0).toUpperCase() + day.slice(1)}
                 </Text>
               </TouchableOpacity>
@@ -150,7 +180,7 @@ function SettingsScreen() {
 
         {/* Export/Import */}
         <Card style={styles.settingCard}>
-          <Text style={styles.settingLabel}>Data</Text>
+          <Text style={[styles.settingLabel, { color: theme.text.secondary }]}>Data</Text>
           <View style={styles.dataRow}>
             <Button
               title="Export"
@@ -177,9 +207,17 @@ function SettingsScreen() {
             style={styles.debugToggle}
             onPress={() => saveMutation.mutate({ debugMode: !settings.debugMode })}
           >
-            <Text style={styles.settingLabel}>Debug Mode</Text>
-            <View style={[styles.toggle, settings.debugMode && styles.toggleActive]}>
-              <View style={[styles.toggleKnob, settings.debugMode && styles.toggleKnobActive]} />
+            <Text style={[styles.settingLabel, { color: theme.text.secondary }]}>Debug Mode</Text>
+            <View style={[
+              styles.toggle,
+              { backgroundColor: theme.border },
+              settings.debugMode && { backgroundColor: theme.primary },
+            ]}>
+              <View style={[
+                styles.toggleKnob,
+                { backgroundColor: theme.cardBackground },
+                settings.debugMode && styles.toggleKnobActive,
+              ]} />
             </View>
           </TouchableOpacity>
         </Card>
@@ -188,7 +226,7 @@ function SettingsScreen() {
         {settings.debugMode && (
           <>
             <Card style={styles.settingCard}>
-              <Text style={styles.settingLabel}>Developer Tools</Text>
+              <Text style={[styles.settingLabel, { color: theme.text.secondary }]}>Developer Tools</Text>
               <Button
                 title="Replay Onboarding Flow"
                 variant="outline"
@@ -206,11 +244,56 @@ function SettingsScreen() {
 
       </ScrollView>
 
+      {/* Theme picker modal */}
+      <Modal visible={showThemePicker} animationType="slide" transparent>
+        <View style={[styles.modalOverlay, { backgroundColor: theme.overlay }]}>
+          <View style={[styles.modalContent, { backgroundColor: theme.cardBackground }]}>
+            <Text style={[styles.modalTitle, { color: theme.text.primary }]}>Select Theme</Text>
+            <FlatList
+              data={THEME_OPTIONS}
+              keyExtractor={(item) => item.mode}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[
+                    styles.themeRow,
+                    { borderBottomColor: theme.border },
+                    settings.themeMode === item.mode && {
+                      backgroundColor: `${theme.primary}20`,
+                    },
+                  ]}
+                  onPress={() => handleThemeSelect(item.mode)}
+                >
+                  <Ionicons name={item.icon as any} size={24} color={theme.primary} />
+                  <View style={styles.themeInfo}>
+                    <Text style={[styles.themeLabel, { color: theme.text.primary }]}>
+                      {item.label}
+                    </Text>
+                    <Text style={[styles.themeDesc, { color: theme.text.secondary }]}>
+                      {item.description}
+                    </Text>
+                  </View>
+                  {settings.themeMode === item.mode && (
+                    <Ionicons name="checkmark" size={20} color={theme.primary} />
+                  )}
+                </TouchableOpacity>
+              )}
+              style={{ maxHeight: 500 }}
+            />
+            <Button
+              title="Cancel"
+              variant="ghost"
+              onPress={() => setShowThemePicker(false)}
+              style={{ marginTop: SPACING.md }}
+            />
+          </View>
+        </View>
+      </Modal>
+
       {/* Language picker modal */}
       <Modal visible={showLangPicker} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Select Language</Text>
+        <View style={[styles.modalOverlay, { backgroundColor: theme.overlay }]}>
+          <View style={[styles.modalContent, { backgroundColor: theme.cardBackground }]}>
+            <Text style={[styles.modalTitle, { color: theme.text.primary }]}>Select Language</Text>
             <FlatList
               data={LANGUAGES}
               keyExtractor={(item) => item.code}
@@ -218,15 +301,18 @@ function SettingsScreen() {
                 <TouchableOpacity
                   style={[
                     styles.langRow,
-                    settings.language === item.code && styles.langRowActive,
+                    { borderBottomColor: theme.border },
+                    settings.language === item.code && {
+                      backgroundColor: `${theme.primary}20`,
+                    },
                   ]}
                   onPress={() => handleLanguageSelect(item.code)}
                 >
-                  <Text style={styles.langText}>
+                  <Text style={[styles.langText, { color: theme.text.primary }]}>
                     {item.label === item.nativeName ? item.label : `${item.label} ${item.nativeName}`}
                   </Text>
                   {settings.language === item.code && (
-                    <Ionicons name="checkmark" size={20} color="#2196F3" />
+                    <Ionicons name="checkmark" size={20} color={theme.primary} />
                   )}
                 </TouchableOpacity>
               )}
@@ -257,30 +343,26 @@ const styles = StyleSheet.create({
   screenTitle: {
     fontSize: FONT_SIZE.xxl,
     fontWeight: '800',
-    color: '#222',
     marginBottom: SPACING.lg,
     marginTop: SPACING.sm,
   },
   settingCard: { marginBottom: SPACING.md },
-  settingLabel: { fontSize: FONT_SIZE.sm, fontWeight: '600', color: '#555', marginBottom: SPACING.xs },
+  settingLabel: { fontSize: FONT_SIZE.sm, fontWeight: '600', marginBottom: SPACING.xs },
   settingValue: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: SPACING.xs,
   },
-  valueText: { fontSize: FONT_SIZE.md, color: '#222' },
-  // chevron replaced by Ionicons inline
+  valueText: { fontSize: FONT_SIZE.md },
   weekRow: { flexDirection: 'row', gap: SPACING.sm },
   weekBtn: {
     flex: 1,
     paddingVertical: SPACING.sm,
     alignItems: 'center',
     borderRadius: BORDER_RADIUS.md,
-    backgroundColor: '#f0f0f0',
   },
-  weekBtnActive: { backgroundColor: '#2196F3' },
-  weekBtnText: { fontSize: FONT_SIZE.sm, fontWeight: '600', color: '#555' },
+  weekBtnText: { fontSize: FONT_SIZE.sm, fontWeight: '600' },
   weekBtnTextActive: { color: '#fff' },
   dataRow: { flexDirection: 'row', gap: SPACING.sm },
   debugToggle: {
@@ -292,16 +374,13 @@ const styles = StyleSheet.create({
     width: 48,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#E0E0E0',
     justifyContent: 'center',
     paddingHorizontal: 2,
   },
-  toggleActive: { backgroundColor: '#2196F3' },
   toggleKnob: {
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#fff',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
@@ -311,12 +390,10 @@ const styles = StyleSheet.create({
   toggleKnobActive: { alignSelf: 'flex-end' },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'center',
     padding: SPACING.xl,
   },
   modalContent: {
-    backgroundColor: '#fff',
     borderRadius: BORDER_RADIUS.lg,
     padding: SPACING.xl,
     maxHeight: '70%',
@@ -324,8 +401,26 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: FONT_SIZE.xl,
     fontWeight: '700',
-    color: '#222',
     marginBottom: SPACING.lg,
+  },
+  themeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.sm,
+    borderBottomWidth: 1,
+    gap: SPACING.md,
+  },
+  themeInfo: {
+    flex: 1,
+  },
+  themeLabel: {
+    fontSize: FONT_SIZE.md,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  themeDesc: {
+    fontSize: FONT_SIZE.xs,
   },
   langRow: {
     flexDirection: 'row',
@@ -334,9 +429,6 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.md,
     paddingHorizontal: SPACING.sm,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
   },
-  langRowActive: { backgroundColor: '#E3F2FD' },
-  langText: { fontSize: FONT_SIZE.md, color: '#222' },
-  // langCheck replaced by Ionicons inline
+  langText: { fontSize: FONT_SIZE.md },
 });

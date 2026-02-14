@@ -55,10 +55,10 @@ export function Toast({ message, type = 'success', duration = 2000, onHide }: To
 
   const backgroundColor =
     type === 'success'
-      ? '#10B981' // green
+      ? theme.success
       : type === 'error'
-      ? '#EF4444' // red
-      : theme.colors.text;
+      ? theme.error
+      : theme.primary;
 
   return (
     <Animated.View

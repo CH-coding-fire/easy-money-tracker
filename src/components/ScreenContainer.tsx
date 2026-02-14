@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, StyleSheet, ViewStyle } from 'react-native';
+import { View, ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SPACING } from '../constants/spacing';
+import { useTheme } from '../hooks/useTheme';
 
 interface ScreenContainerProps {
   children: React.ReactNode;
@@ -12,12 +13,14 @@ interface ScreenContainerProps {
 
 export function ScreenContainer({ children, style, padBottom = true, padTop = true }: ScreenContainerProps) {
   const insets = useSafeAreaInsets();
+  const theme = useTheme();
 
   return (
     <View
       style={[
-        styles.container,
         {
+          flex: 1,
+          backgroundColor: theme.background,
           paddingTop: padTop ? insets.top + SPACING.sm : 0,
           paddingBottom: padBottom ? insets.bottom + SPACING.sm : 0,
           paddingLeft: insets.left + SPACING.lg,
@@ -30,10 +33,3 @@ export function ScreenContainer({ children, style, padBottom = true, padTop = tr
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F5F5',
-  },
-});

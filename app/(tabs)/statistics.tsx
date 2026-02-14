@@ -1,13 +1,13 @@
 import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  Dimensions,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Dimensions,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { BarChart } from 'react-native-gifted-charts';
 
@@ -22,13 +22,14 @@ import { SegmentedControl } from '../../src/components/SegmentedControl';
 import { BORDER_RADIUS, FONT_SIZE, SPACING } from '../../src/constants/spacing';
 import { useFxRates } from '../../src/hooks/useFx';
 import { useSettings } from '../../src/hooks/useSettings';
+import { useTheme } from '../../src/hooks/useTheme';
 import { useTransactions } from '../../src/hooks/useTransactions';
 import { useUIStore } from '../../src/store/uiStore';
 import { DateRangePreset, StatsMode } from '../../src/types';
 import {
-  formatDateRange,
-  getDateRange,
-  shiftDateRange
+    formatDateRange,
+    getDateRange,
+    shiftDateRange
 } from '../../src/utils/dateHelpers';
 import { convertCurrency } from '../../src/utils/fxConvert';
 
@@ -46,13 +47,6 @@ function formatYAxisLabel(val: string): string {
   return n % 1 === 0 ? String(n) : n.toFixed(1);
 }
 
-const PIE_COLORS = [
-  '#2196F3', '#4CAF50', '#FF9800', '#9C27B0', '#F44336',
-  '#00BCD4', '#795548', '#607D8B', '#E91E63', '#3F51B5',
-  '#009688', '#FF5722', '#CDDC39', '#FFC107', '#8BC34A',
-  '#673AB7', '#03A9F4', '#FFEB3B', '#FF6F00', '#1B5E20',
-];
-
 const DATE_PRESETS: { label: string; value: DateRangePreset }[] = [
   { label: 'Today', value: 'today' },
   { label: 'Week', value: 'this_week' },
@@ -67,6 +61,7 @@ function StatisticsScreen() {
   const router = useRouter();
   const transactions = useTransactions();
   const settings = useSettings();
+  const theme = useTheme();
   const { data: fxCache, isLoading: fxLoading, isFetching: fxFetching, isError: fxError, forceRefresh: fxRefresh } = useFxRates();
   const [fxRefreshing, setFxRefreshing] = useState(false);
   const [showFxRates, setShowFxRates] = useState(false);
@@ -76,6 +71,8 @@ function StatisticsScreen() {
     statsCurrency, setStatsCurrency,
     statsDrillCategory, setStatsDrillCategory,
   } = useUIStore();
+
+  const scrollViewRef = useRef<ScrollView>(null);
 
   const [dateRange, setDateRange] = useState(
     getDateRange(statsDatePreset, settings.weekStartsOn)
@@ -166,11 +163,11 @@ function StatisticsScreen() {
       .map(([name, data], i) => ({
         value: Math.round(data.amount * 100) / 100,
         text: name,
-        color: PIE_COLORS[i % PIE_COLORS.length],
+        color: theme.chartColors[i % theme.chartColors.length],
         children: data.children,
       }))
       .sort((a, b) => b.value - a.value);
-  }, [filteredTx, statsMode]);
+  }, [filteredTx, statsMode, theme.chartColors]);
 
   // ── Drill-down pie data ──────────────────────────────────────────────────
 
@@ -182,10 +179,10 @@ function StatisticsScreen() {
       .map(([name, amount], i) => ({
         value: Math.round(amount * 100) / 100,
         text: name,
-        color: PIE_COLORS[(i + 5) % PIE_COLORS.length],
+        color: theme.chartColors[(i + 5) % theme.chartColors.length],
       }))
       .sort((a, b) => b.value - a.value);
-  }, [statsDrillCategory, pieData]);
+  }, [statsDrillCategory, pieData, theme.chartColors]);
 
   // Subtotal for the drilled category
   const drillTotal = useMemo(
@@ -207,9 +204,9 @@ function StatisticsScreen() {
     return entries.map(([date, value], idx) => ({
       value: Math.round(value * 100) / 100,
       label: idx % showEveryNth === 0 ? date.slice(5) : '',
-      frontColor: statsMode === 'expense_pie' ? '#F44336' : '#4CAF50',
+      frontColor: statsMode === 'expense_pie' ? theme.error : theme.success,
     }));
-  }, [filteredTx, statsMode]);
+  }, [filteredTx, statsMode, theme.error, theme.success]);
 
   // ── Balance bar chart data ───────────────────────────────────────────────
 
@@ -232,14 +229,14 @@ function StatisticsScreen() {
       return {
         value: val,
         label: idx % showEveryNth === 0 ? date.slice(5) : '',
-        frontColor: val >= 0 ? '#4CAF50' : '#F44336',
+        frontColor: val >= 0 ? theme.success : theme.error,
       };
     });
-  }, [transactions, statsMode, dateRange, statsCurrency, fxCache]);
+  }, [transactions, statsMode, dateRange, statsCurrency, fxCache, theme.success, theme.error]);
 
   return (
     <ScreenContainer padBottom={false}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView ref={scrollViewRef} showsVerticalScrollIndicator={false}>
         {/* Mode selector */}
         <SegmentedControl<StatsMode>
           options={[
@@ -461,7 +458,16 @@ function StatisticsScreen() {
 
             {/* Pie chart – Level 2 (expanded subcategories) */}
             {statsDrillCategory && drillPieData.length > 0 && (
-              <Card style={styles.chartCard}>
+              <Card
+                style={styles.chartCard}
+                onLayout={(event) => {
+                  const y = event.nativeEvent.layout.y;
+                  // Small delay to ensure layout is fully settled
+                  setTimeout(() => {
+                    scrollViewRef.current?.scrollTo({ y: y - 10, animated: true });
+                  }, 100);
+                }}
+              >
                 <View style={styles.drillHeader}>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.chartTitle}>

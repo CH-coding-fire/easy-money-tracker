@@ -8,6 +8,7 @@ import {
   TextStyle,
 } from 'react-native';
 import { SPACING, BORDER_RADIUS, FONT_SIZE } from '../constants/spacing';
+import { useTheme } from '../hooks/useTheme';
 
 type Variant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
 type Size = 'sm' | 'md' | 'lg';
@@ -22,14 +23,6 @@ interface ButtonProps {
   icon?: React.ReactNode;
   style?: ViewStyle;
 }
-
-const COLORS: Record<Variant, { bg: string; text: string; border: string }> = {
-  primary: { bg: '#2196F3', text: '#fff', border: '#2196F3' },
-  secondary: { bg: '#E3F2FD', text: '#1565C0', border: '#E3F2FD' },
-  outline: { bg: 'transparent', text: '#2196F3', border: '#2196F3' },
-  ghost: { bg: 'transparent', text: '#2196F3', border: 'transparent' },
-  danger: { bg: '#F44336', text: '#fff', border: '#F44336' },
-};
 
 const SIZES: Record<Size, { paddingV: number; paddingH: number; fontSize: number }> = {
   sm: { paddingV: SPACING.xs, paddingH: SPACING.md, fontSize: FONT_SIZE.sm },
@@ -47,8 +40,26 @@ export function Button({
   icon,
   style,
 }: ButtonProps) {
-  const color = COLORS[variant];
+  const theme = useTheme();
   const sz = SIZES[size];
+
+  // Dynamic colors based on theme and variant
+  const getColors = () => {
+    switch (variant) {
+      case 'primary':
+        return { bg: theme.primary, text: '#fff', border: theme.primary };
+      case 'secondary':
+        return { bg: `${theme.primary}20`, text: theme.primary, border: `${theme.primary}20` };
+      case 'outline':
+        return { bg: 'transparent', text: theme.primary, border: theme.primary };
+      case 'ghost':
+        return { bg: 'transparent', text: theme.primary, border: 'transparent' };
+      case 'danger':
+        return { bg: theme.error, text: '#fff', border: theme.error };
+    }
+  };
+
+  const color = getColors();
 
   return (
     <TouchableOpacity
@@ -59,8 +70,8 @@ export function Button({
       style={[
         styles.base,
         {
-          backgroundColor: disabled ? '#ccc' : color.bg,
-          borderColor: disabled ? '#ccc' : color.border,
+          backgroundColor: disabled ? theme.border : color.bg,
+          borderColor: disabled ? theme.border : color.border,
           paddingVertical: sz.paddingV,
           paddingHorizontal: sz.paddingH,
         },
@@ -75,7 +86,7 @@ export function Button({
           <Text
             style={[
               styles.text,
-              { color: disabled ? '#888' : color.text, fontSize: sz.fontSize },
+              { color: disabled ? theme.text.tertiary : color.text, fontSize: sz.fontSize },
               icon ? { marginLeft: SPACING.xs } : undefined,
             ]}
           >

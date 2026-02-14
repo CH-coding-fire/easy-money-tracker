@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { SPACING, BORDER_RADIUS, FONT_SIZE } from '../constants/spacing';
+import { useTheme } from '../hooks/useTheme';
 
 interface SegmentedControlProps<T extends string> {
   options: { label: string; value: T }[];
@@ -15,8 +16,10 @@ export function SegmentedControl<T extends string>({
   onSelect,
   disabled = false,
 }: SegmentedControlProps<T>) {
+  const theme = useTheme();
+  
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.border }]}>
       {options.map((opt) => {
         const isActive = opt.value === selected;
         return (
@@ -25,14 +28,25 @@ export function SegmentedControl<T extends string>({
             onPress={() => !disabled && onSelect(opt.value)}
             style={[
               styles.segment,
-              isActive && styles.segmentActive,
+              isActive && { 
+                backgroundColor: theme.cardBackground,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 3 },
+                shadowOpacity: 0.05,
+                shadowRadius: 5,
+                elevation: 2,
+              },
               disabled && isActive && styles.segmentActiveDisabled,
             ]}
             accessibilityLabel={opt.label}
             accessibilityRole="button"
             disabled={disabled}
           >
-            <Text style={[styles.label, isActive && styles.labelActive]}>
+            <Text style={[
+              styles.label,
+              { color: theme.text.secondary },
+              isActive && { color: theme.primary, fontWeight: '700' },
+            ]}>
               {opt.label}
             </Text>
           </TouchableOpacity>
@@ -45,7 +59,6 @@ export function SegmentedControl<T extends string>({
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    backgroundColor: '#E0E0E0',
     borderRadius: BORDER_RADIUS.md,
     padding: 2,
   },
@@ -55,14 +68,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: BORDER_RADIUS.md - 2,
   },
-  segmentActive: {
-    backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    elevation: 2,
-  },
   segmentActiveDisabled: {
     shadowOpacity: 0,
     elevation: 0,
@@ -70,10 +75,5 @@ const styles = StyleSheet.create({
   label: {
     fontSize: FONT_SIZE.sm,
     fontWeight: '500',
-    color: '#666',
-  },
-  labelActive: {
-    color: '#2196F3',
-    fontWeight: '700',
   },
 });
