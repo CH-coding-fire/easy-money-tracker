@@ -72,6 +72,7 @@ function StatisticsScreen() {
     statsDatePreset, setStatsDatePreset,
     statsCurrency, setStatsCurrency,
     statsDrillCategory, setStatsDrillCategory,
+    statsDrillSubCategory, setStatsDrillSubCategory,
   } = useUIStore();
 
   const scrollViewRef = useRef<ScrollView>(null);
@@ -149,7 +150,11 @@ function StatisticsScreen() {
   const pieData = useMemo(() => {
     if (statsMode === 'balance_line') return [];
 
-    const grouped: Record<string, { amount: number; children: Record<string, number> }> = {};
+    const grouped: Record<string, {
+      amount: number;
+      children: Record<string, { amount: number; children: Record<string, number> }>;
+    }> = {};
+
     for (const t of filteredTx) {
       const cat1 = t.categoryPath[0] ?? 'Unclassified';
       if (!grouped[cat1]) grouped[cat1] = { amount: 0, children: {} };
@@ -157,7 +162,14 @@ function StatisticsScreen() {
 
       if (t.categoryPath.length > 1) {
         const cat2 = t.categoryPath[1];
-        grouped[cat1].children[cat2] = (grouped[cat1].children[cat2] ?? 0) + t.convertedAmount;
+        if (!grouped[cat1].children[cat2]) grouped[cat1].children[cat2] = { amount: 0, children: {} };
+        grouped[cat1].children[cat2].amount += t.convertedAmount;
+
+        if (t.categoryPath.length > 2) {
+          const cat3 = t.categoryPath[2];
+          grouped[cat1].children[cat2].children[cat3] =
+            (grouped[cat1].children[cat2].children[cat3] ?? 0) + t.convertedAmount;
+        }
       }
     }
 
@@ -166,7 +178,11 @@ function StatisticsScreen() {
         value: Math.round(data.amount * 100) / 100,
         text: name,
         color: theme.chartColors[i % theme.chartColors.length],
-        children: data.children,
+        children: Object.fromEntries(
+          Object.entries(data.children).map(([k, v]) => [k, v.amount]),
+        ),
+        // nested children for Level 3 drill-down
+        _l3: data.children,
       }))
       .sort((a, b) => b.value - a.value);
   }, [filteredTx, statsMode, theme.chartColors]);
@@ -177,11 +193,13 @@ function StatisticsScreen() {
     if (!statsDrillCategory) return [];
     const parent = pieData.find((d) => d.text === statsDrillCategory);
     if (!parent) return [];
+    const l3 = (parent as any)._l3 as Record<string, { amount: number; children: Record<string, number> }> | undefined;
     return Object.entries(parent.children)
       .map(([name, amount], i) => ({
         value: Math.round(amount * 100) / 100,
         text: name,
         color: theme.chartColors[(i + 5) % theme.chartColors.length],
+        children: l3?.[name]?.children,
       }))
       .sort((a, b) => b.value - a.value);
   }, [statsDrillCategory, pieData, theme.chartColors]);
@@ -190,6 +208,26 @@ function StatisticsScreen() {
   const drillTotal = useMemo(
     () => drillPieData.reduce((sum, d) => sum + d.value, 0),
     [drillPieData],
+  );
+
+  // ── Level-3 drill-down pie data ────────────────────────────────────────
+
+  const drillL3PieData = useMemo(() => {
+    if (!statsDrillSubCategory) return [];
+    const parent = drillPieData.find((d) => d.text === statsDrillSubCategory);
+    if (!parent || !parent.children || Object.keys(parent.children).length === 0) return [];
+    return Object.entries(parent.children)
+      .map(([name, amount], i) => ({
+        value: Math.round(amount * 100) / 100,
+        text: name,
+        color: theme.chartColors[(i + 3) % theme.chartColors.length],
+      }))
+      .sort((a, b) => b.value - a.value);
+  }, [statsDrillSubCategory, drillPieData, theme.chartColors]);
+
+  const drillL3Total = useMemo(
+    () => drillL3PieData.reduce((sum, d) => sum + d.value, 0),
+    [drillL3PieData],
   );
 
   // ── Bar chart data ───────────────────────────────────────────────────────
@@ -503,6 +541,54 @@ function StatisticsScreen() {
                     radius={70}
                     innerRadius={35}
                     centerLabel={`${statsCurrency} ${drillTotal.toFixed(0)}`}
+                    currency={statsCurrency}
+                    expandedCategory={statsDrillSubCategory}
+                    onSlicePress={(item) => {
+                      if ('children' in item && Object.keys(item.children ?? {}).length > 0) {
+                        setStatsDrillSubCategory(
+                          statsDrillSubCategory === item.text ? null : item.text,
+                        );
+                      }
+                    }}
+                    containerWidth={CHART_WIDTH + PIE_BLEED * 2}
+                  />
+                </View>
+              </Card>
+            )}
+
+            {/* Pie chart – Level 3 (expanded sub-subcategories) */}
+            {statsDrillSubCategory && drillL3PieData.length > 0 && (
+              <Card
+                style={styles.chartCard}
+                onLayout={(event) => {
+                  const y = event.nativeEvent.layout.y;
+                  setTimeout(() => {
+                    scrollViewRef.current?.scrollTo({ y: y - 10, animated: true });
+                  }, 100);
+                }}
+              >
+                <View style={styles.drillHeader}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.chartTitle, { color: theme.text.primary }]}>
+                      {statsDrillSubCategory}
+                    </Text>
+                    <Text style={[styles.drillSubtitle, { color: theme.text.tertiary }]}>
+                      {statsDrillCategory} {'>'} Sub-subcategories
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => setStatsDrillSubCategory(null)}
+                    style={[styles.drillCloseBtn, { backgroundColor: theme.background }]}
+                  >
+                    <Ionicons name="close" size={18} color={theme.text.tertiary} />
+                  </TouchableOpacity>
+                </View>
+                <View style={{ marginHorizontal: -PIE_BLEED }}>
+                  <PieChartWithLabels
+                    data={drillL3PieData}
+                    radius={60}
+                    innerRadius={30}
+                    centerLabel={`${statsCurrency} ${drillL3Total.toFixed(0)}`}
                     currency={statsCurrency}
                     containerWidth={CHART_WIDTH + PIE_BLEED * 2}
                   />

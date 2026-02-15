@@ -5,6 +5,7 @@ import { DEFAULT_CATEGORIES } from '../constants/categories';
 import { DEFAULT_CURRENCY } from '../constants/currencies';
 import { logger } from '../utils/logger';
 import { nowISO } from '../utils/dateHelpers';
+import { ensureUnclassified } from '../utils/categoryHelpers';
 
 const STORAGE_KEY = '@easy_money_tracker';
 const SCHEMA_VERSION = 1;
@@ -57,6 +58,12 @@ export async function loadAppData(): Promise<AppData> {
       });
       return getDefaultAppData();
     }
+    // Ensure "Unclassified" integrity on every load
+    parsed.categories = {
+      expense: ensureUnclassified(parsed.categories.expense ?? []),
+      income: ensureUnclassified(parsed.categories.income ?? []),
+    };
+
     logger.info(TAG, 'loadAppData: success', {
       txCount: parsed.transactions.length,
       schemaVersion: parsed.schemaVersion,
@@ -132,7 +139,11 @@ export async function deleteTransaction(id: string): Promise<AppData> {
 export async function saveCategories(categories: CategoryGroup): Promise<AppData> {
   logger.info(TAG, 'saveCategories: start');
   const data = await loadAppData();
-  data.categories = categories;
+  // Enforce "Unclassified" at every level before persisting
+  data.categories = {
+    expense: ensureUnclassified(categories.expense),
+    income: ensureUnclassified(categories.income),
+  };
   await saveAppData(data);
   logger.info(TAG, 'saveCategories: complete');
   return data;

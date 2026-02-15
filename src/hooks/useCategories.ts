@@ -20,6 +20,7 @@ export function useSaveCategories() {
     onSuccess: (data) => {
       logger.info(TAG, 'useSaveCategories: cache updated');
       qc.setQueryData(QUERY_KEY, data);
+      qc.invalidateQueries({ queryKey: QUERY_KEY });
     },
     onError: (err) => {
       logger.error(TAG, 'useSaveCategories: failed', err);

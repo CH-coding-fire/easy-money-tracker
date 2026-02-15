@@ -33,6 +33,7 @@ export function useAddTransaction() {
     onSuccess: (data) => {
       logger.info(TAG, 'useAddTransaction: invalidating cache');
       qc.setQueryData(QUERY_KEY, data);
+      qc.invalidateQueries({ queryKey: QUERY_KEY });
     },
     onError: (err) => {
       logger.error(TAG, 'useAddTransaction: failed', err);
@@ -47,6 +48,7 @@ export function useAddTransactions() {
     onSuccess: (data) => {
       logger.info(TAG, 'useAddTransactions: invalidating cache');
       qc.setQueryData(QUERY_KEY, data);
+      qc.invalidateQueries({ queryKey: QUERY_KEY });
     },
     onError: (err) => {
       logger.error(TAG, 'useAddTransactions: failed', err);
@@ -61,6 +63,7 @@ export function useUpdateTransaction() {
     onSuccess: (data) => {
       logger.info(TAG, 'useUpdateTransaction: invalidating cache');
       qc.setQueryData(QUERY_KEY, data);
+      qc.invalidateQueries({ queryKey: QUERY_KEY });
     },
     onError: (err) => {
       logger.error(TAG, 'useUpdateTransaction: failed', err);
@@ -75,6 +78,7 @@ export function useDeleteTransaction() {
     onSuccess: (data) => {
       logger.info(TAG, 'useDeleteTransaction: invalidating cache');
       qc.setQueryData(QUERY_KEY, data);
+      qc.invalidateQueries({ queryKey: QUERY_KEY });
     },
     onError: (err) => {
       logger.error(TAG, 'useDeleteTransaction: failed', err);

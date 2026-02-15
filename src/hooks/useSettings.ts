@@ -32,6 +32,7 @@ export function useSaveSettings() {
     onSuccess: (data) => {
       logger.info(TAG, 'useSaveSettings: cache updated');
       qc.setQueryData(QUERY_KEY, data);
+      qc.invalidateQueries({ queryKey: QUERY_KEY });
     },
     onError: (err, _partial, context) => {
       logger.error(TAG, 'useSaveSettings: failed, rolling back', err);

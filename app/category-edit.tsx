@@ -1,33 +1,34 @@
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
   Alert,
-  TextInput,
   Modal,
   TouchableOpacity as RNTouchableOpacity,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
 // CRITICAL: Use gesture-handler's TouchableOpacity inside DraggableFlatList
 // RN's TouchableOpacity conflicts with gesture-handler and breaks drag
-import { TouchableOpacity } from 'react-native-gesture-handler';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import {
   NestableDraggableFlatList,
   NestableScrollContainer,
   RenderItemParams,
 } from 'react-native-draggable-flatlist';
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { generateUUID } from '../src/utils/uuid';
-import { ScreenContainer } from '../src/components/ScreenContainer';
-import { SegmentedControl } from '../src/components/SegmentedControl';
+import { TouchableOpacity } from 'react-native-gesture-handler';
 import { Button } from '../src/components/Button';
 import { ErrorBoundary } from '../src/components/ErrorBoundary';
+import { ScreenContainer } from '../src/components/ScreenContainer';
+import { SegmentedControl } from '../src/components/SegmentedControl';
+import { BORDER_RADIUS, FONT_SIZE, SPACING } from '../src/constants/spacing';
 import { useCategories, useSaveCategories } from '../src/hooks/useCategories';
 import { useTheme } from '../src/hooks/useTheme';
-import { Category, TransactionType } from '../src/types';
-import { SPACING, FONT_SIZE, BORDER_RADIUS } from '../src/constants/spacing';
-import { logger } from '../src/utils/logger';
 import { useUIStore } from '../src/store/uiStore';
+import { Category, TransactionType } from '../src/types';
+import { isUnclassified, UNCLASSIFIED_NAME } from '../src/utils/categoryHelpers';
+import { logger } from '../src/utils/logger';
+import { generateUUID } from '../src/utils/uuid';
 
 const TAG = 'CategoryEditScreen';
 const MAX_DEPTH = 3;
@@ -90,6 +91,12 @@ function CategoryEditScreen() {
       return;
     }
 
+    // Prevent creating/renaming to "Unclassified" — it is system-managed
+    if (editName.trim() === UNCLASSIFIED_NAME) {
+      showToast(`"${UNCLASSIFIED_NAME}" is reserved and managed automatically`, 'error');
+      return;
+    }
+
     const expense = structuredClone(categories.expense);
     const income = structuredClone(categories.income);
     const target = catType === 'expense' ? expense : income;
@@ -104,6 +111,7 @@ function CategoryEditScreen() {
       logger.info(TAG, 'Category added', { name: editName, parentPath: addParentPath });
     }
 
+    // ensureUnclassified is applied by saveCategories in storage layer
     saveAll(expense, income);
     setEditModalVisible(false);
   }
@@ -132,7 +140,16 @@ function CategoryEditScreen() {
 
   // ── drag handlers ────────────────────────────────────────────────────────
 
+  // #region agent log
+  const debugLog = (location: string, message: string, data: Record<string, unknown> = {}, hypothesisId: string = '') => {
+    fetch('http://127.0.0.1:7242/ingest/3569388c-cf79-4ba9-a84e-1cad357869c3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location,message,data,timestamp:Date.now(),hypothesisId})}).catch(()=>{});
+  };
+  // #endregion
+
   function handleRootDragEnd({ data }: { data: Category[] }) {
+    // #region agent log
+    debugLog('category-edit.tsx:handleRootDragEnd','L1 drag end fired',{dataLen:data.length},'B');
+    // #endregion
     if (catType === 'expense') {
       saveAll(data, structuredClone(categories.income));
     } else {
@@ -141,6 +158,9 @@ function CategoryEditScreen() {
   }
 
   function handleChildDragEnd(parentId: string, newChildren: Category[]) {
+    // #region agent log
+    debugLog('category-edit.tsx:handleChildDragEnd','L2/L3 child drag end fired',{parentId,childrenLen:newChildren.length},'B');
+    // #endregion
     const expense = structuredClone(categories.expense);
     const income = structuredClone(categories.income);
     const target = catType === 'expense' ? expense : income;
@@ -171,16 +191,32 @@ function CategoryEditScreen() {
       </Text>
 
       {/* Scrollable content with nested drag support */}
-      <NestableScrollContainer contentContainerStyle={styles.scrollContent}>
+      <NestableScrollContainer
+        contentContainerStyle={styles.scrollContent}
+        // #region agent log
+        onScrollBeginDrag={() => {
+          debugLog('category-edit.tsx:NestableScrollContainer','Outer scroll BEGIN drag',{},'A');
+        }}
+        onMomentumScrollBegin={() => {
+          debugLog('category-edit.tsx:NestableScrollContainer','Outer scroll MOMENTUM begin',{},'A');
+        }}
+        // #endregion
+      >
         {/* ── Level 1: root categories ── */}
         <NestableDraggableFlatList
           data={topLevelItems}
           keyExtractor={(item) => item.id}
           onDragEnd={handleRootDragEnd}
           dragItemOverflow
+          // #region agent log
+          onDragBegin={(index: number) => {
+            debugLog('category-edit.tsx:L1-NestableDraggableFlatList','L1 onDragBegin fired',{index},'B');
+          }}
+          // #endregion
           renderItem={({ item, drag, isActive }: RenderItemParams<Category>) => {
             const hasChildren = !!(item.children && item.children.length > 0);
             const isExpanded = expandedIds.has(item.id);
+            const isSystem = isUnclassified(item);
 
             return (
               <View style={[
@@ -190,14 +226,29 @@ function CategoryEditScreen() {
               ]}>
                 {/* Root row */}
                 <View style={styles.row}>
+                  {/* Drag handle — disabled for Unclassified (pinned to top) */}
                   <TouchableOpacity
-                    onLongPress={drag}
+                    onLongPress={isSystem ? undefined : () => {
+                      // #region agent log
+                      debugLog('category-edit.tsx:L1-DragHandle','L1 onLongPress fired',{itemId:item.id,itemName:item.name},'B');
+                      // #endregion
+                      drag();
+                    }}
+                    onPressIn={() => {
+                      // #region agent log
+                      debugLog('category-edit.tsx:L1-DragHandle','L1 onPressIn',{itemId:item.id,itemName:item.name},'E');
+                      // #endregion
+                    }}
                     delayLongPress={150}
-                    disabled={isActive}
+                    disabled={isActive || isSystem}
                     style={styles.dragHandle}
                     activeOpacity={0.5}
                   >
-                    <Ionicons name="menu" size={20} color={isActive ? theme.primary : theme.text.tertiary} />
+                    <Ionicons
+                      name={isSystem ? 'lock-closed' : 'menu'}
+                      size={20}
+                      color={isSystem ? theme.text.tertiary : (isActive ? theme.primary : theme.text.tertiary)}
+                    />
                   </TouchableOpacity>
 
                   <Text style={styles.l1Icon}>{item.icon ?? '📁'}</Text>
@@ -212,12 +263,17 @@ function CategoryEditScreen() {
                   </View>
 
                   <View style={styles.actions}>
-                    <TouchableOpacity style={styles.actionBtn} onPress={() => openEditModalForCat(item)}>
-                      <Ionicons name="create-outline" size={20} color={theme.text.secondary} />
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.actionBtn} onPress={() => openAddModal([item.name])}>
-                      <Ionicons name="add-circle-outline" size={20} color={theme.primary} />
-                    </TouchableOpacity>
+                    {/* Hide edit/add-sub/delete for Unclassified */}
+                    {!isSystem && (
+                      <TouchableOpacity style={styles.actionBtn} onPress={() => openEditModalForCat(item)}>
+                        <Ionicons name="create-outline" size={20} color={theme.text.secondary} />
+                      </TouchableOpacity>
+                    )}
+                    {!isSystem && (
+                      <TouchableOpacity style={styles.actionBtn} onPress={() => openAddModal([item.name])}>
+                        <Ionicons name="add-circle-outline" size={20} color={theme.primary} />
+                      </TouchableOpacity>
+                    )}
                     {hasChildren && (
                       <TouchableOpacity style={styles.actionBtn} onPress={() => toggleExpand(item.id)}>
                         <Ionicons
@@ -227,9 +283,11 @@ function CategoryEditScreen() {
                         />
                       </TouchableOpacity>
                     )}
-                    <TouchableOpacity style={styles.actionBtn} onPress={() => handleDeleteCat(item)}>
-                      <Ionicons name="trash-outline" size={20} color={theme.error} />
-                    </TouchableOpacity>
+                    {!isSystem && (
+                      <TouchableOpacity style={styles.actionBtn} onPress={() => handleDeleteCat(item)}>
+                        <Ionicons name="trash-outline" size={20} color={theme.error} />
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </View>
 
@@ -240,10 +298,16 @@ function CategoryEditScreen() {
                       data={item.children!}
                       keyExtractor={(child) => child.id}
                       onDragEnd={({ data }) => handleChildDragEnd(item.id, data)}
+                      // #region agent log
+                      onDragBegin={(index: number) => {
+                        debugLog('category-edit.tsx:L2-NestableDraggableFlatList','L2 onDragBegin fired',{parentId:item.id,index},'A');
+                      }}
+                      // #endregion
                       renderItem={({ item: child, drag: childDrag, isActive: childActive }: RenderItemParams<Category>) => {
                         const childHasKids = !!(child.children && child.children.length > 0);
                         const childExpanded = expandedIds.has(child.id);
                         const canAddL3 = MAX_DEPTH > 2;
+                        const childIsSystem = isUnclassified(child);
 
                         return (
                           <View style={[
@@ -252,14 +316,29 @@ function CategoryEditScreen() {
                             childActive && { backgroundColor: `${theme.primary}15` },
                           ]}>
                             <View style={styles.row}>
+                              {/* Drag handle — disabled for Unclassified */}
                               <TouchableOpacity
-                                onLongPress={childDrag}
+                                onLongPress={childIsSystem ? undefined : () => {
+                                  // #region agent log
+                                  debugLog('category-edit.tsx:L2-DragHandle','L2 onLongPress fired',{childId:child.id,childName:child.name},'A');
+                                  // #endregion
+                                  childDrag();
+                                }}
+                                onPressIn={() => {
+                                  // #region agent log
+                                  debugLog('category-edit.tsx:L2-DragHandle','L2 onPressIn',{childId:child.id,childName:child.name},'E');
+                                  // #endregion
+                                }}
                                 delayLongPress={150}
-                                disabled={childActive}
+                                disabled={childActive || childIsSystem}
                                 style={styles.dragHandle}
                                 activeOpacity={0.5}
                               >
-                                <Ionicons name="menu" size={18} color={childActive ? theme.primary : theme.text.tertiary} />
+                                <Ionicons
+                                  name={childIsSystem ? 'lock-closed' : 'menu'}
+                                  size={18}
+                                  color={childIsSystem ? theme.text.tertiary : (childActive ? theme.primary : theme.text.tertiary)}
+                                />
                               </TouchableOpacity>
 
                               <Text style={styles.l2Icon}>{child.icon ?? '📁'}</Text>
@@ -274,10 +353,12 @@ function CategoryEditScreen() {
                               </View>
 
                               <View style={styles.actions}>
-                                <TouchableOpacity style={styles.actionBtn} onPress={() => openEditModalForCat(child)}>
-                                  <Ionicons name="create-outline" size={18} color={theme.text.secondary} />
-                                </TouchableOpacity>
-                                {canAddL3 && (
+                                {!childIsSystem && (
+                                  <TouchableOpacity style={styles.actionBtn} onPress={() => openEditModalForCat(child)}>
+                                    <Ionicons name="create-outline" size={18} color={theme.text.secondary} />
+                                  </TouchableOpacity>
+                                )}
+                                {canAddL3 && !childIsSystem && (
                                   <TouchableOpacity style={styles.actionBtn} onPress={() => openAddModal([item.name, child.name])}>
                                     <Ionicons name="add-circle-outline" size={18} color={theme.primary} />
                                   </TouchableOpacity>
@@ -291,9 +372,11 @@ function CategoryEditScreen() {
                                     />
                                   </TouchableOpacity>
                                 )}
-                                <TouchableOpacity style={styles.actionBtn} onPress={() => handleDeleteCat(child)}>
-                                  <Ionicons name="trash-outline" size={18} color={theme.error} />
-                                </TouchableOpacity>
+                                {!childIsSystem && (
+                                  <TouchableOpacity style={styles.actionBtn} onPress={() => handleDeleteCat(child)}>
+                                    <Ionicons name="trash-outline" size={18} color={theme.error} />
+                                  </TouchableOpacity>
+                                )}
                               </View>
                             </View>
 
@@ -304,21 +387,43 @@ function CategoryEditScreen() {
                                   data={child.children!}
                                   keyExtractor={(gc) => gc.id}
                                   onDragEnd={({ data }) => handleChildDragEnd(child.id, data)}
-                                  renderItem={({ item: gc, drag: gcDrag, isActive: gcActive }: RenderItemParams<Category>) => (
+                                  // #region agent log
+                                  onDragBegin={(index: number) => {
+                                    debugLog('category-edit.tsx:L3-NestableDraggableFlatList','L3 onDragBegin fired',{parentId:child.id,index},'A');
+                                  }}
+                                  // #endregion
+                                  renderItem={({ item: gc, drag: gcDrag, isActive: gcActive }: RenderItemParams<Category>) => {
+                                    const gcIsSystem = isUnclassified(gc);
+                                    return (
                                     <View style={[
                                       styles.l3Card,
                                       { borderBottomColor: theme.divider },
                                       gcActive && { backgroundColor: `${theme.primary}15` },
                                     ]}>
                                       <View style={styles.row}>
+                                        {/* Drag handle — disabled for Unclassified */}
                                         <TouchableOpacity
-                                          onLongPress={gcDrag}
+                                          onLongPress={gcIsSystem ? undefined : () => {
+                                            // #region agent log
+                                            debugLog('category-edit.tsx:L3-DragHandle','L3 onLongPress fired',{gcId:gc.id,gcName:gc.name},'A');
+                                            // #endregion
+                                            gcDrag();
+                                          }}
+                                          onPressIn={() => {
+                                            // #region agent log
+                                            debugLog('category-edit.tsx:L3-DragHandle','L3 onPressIn',{gcId:gc.id,gcName:gc.name},'E');
+                                            // #endregion
+                                          }}
                                           delayLongPress={150}
-                                          disabled={gcActive}
+                                          disabled={gcActive || gcIsSystem}
                                           style={styles.dragHandle}
                                           activeOpacity={0.5}
                                         >
-                                          <Ionicons name="menu" size={16} color={gcActive ? theme.primary : theme.text.tertiary} />
+                                          <Ionicons
+                                            name={gcIsSystem ? 'lock-closed' : 'menu'}
+                                            size={16}
+                                            color={gcIsSystem ? theme.text.tertiary : (gcActive ? theme.primary : theme.text.tertiary)}
+                                          />
                                         </TouchableOpacity>
 
                                         <Text style={styles.l2Icon}>{gc.icon ?? '📁'}</Text>
@@ -328,16 +433,21 @@ function CategoryEditScreen() {
                                         </View>
 
                                         <View style={styles.actions}>
-                                          <TouchableOpacity style={styles.actionBtn} onPress={() => openEditModalForCat(gc)}>
-                                            <Ionicons name="create-outline" size={18} color={theme.text.secondary} />
-                                          </TouchableOpacity>
-                                          <TouchableOpacity style={styles.actionBtn} onPress={() => handleDeleteCat(gc)}>
-                                            <Ionicons name="trash-outline" size={18} color={theme.error} />
-                                          </TouchableOpacity>
+                                          {!gcIsSystem && (
+                                            <TouchableOpacity style={styles.actionBtn} onPress={() => openEditModalForCat(gc)}>
+                                              <Ionicons name="create-outline" size={18} color={theme.text.secondary} />
+                                            </TouchableOpacity>
+                                          )}
+                                          {!gcIsSystem && (
+                                            <TouchableOpacity style={styles.actionBtn} onPress={() => handleDeleteCat(gc)}>
+                                              <Ionicons name="trash-outline" size={18} color={theme.error} />
+                                            </TouchableOpacity>
+                                          )}
                                         </View>
                                       </View>
                                     </View>
-                                  )}
+                                    );
+                                  }}
                                 />
                               </View>
                             )}
