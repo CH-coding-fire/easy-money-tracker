@@ -122,7 +122,7 @@ export function PieChartWithLabels({
 
   const centerX = containerWidth / 2;
   // The chart area: pie + labels.  Height = 2*(pieRadius + verticalPadding)
-  const verticalPad = 60;                       // room above & below pie for labels
+  const verticalPad = 80;                       // room above & below pie for labels
   const chartH = (pieRadius + verticalPad) * 2;
   const centerY = chartH / 2;
 
@@ -153,7 +153,7 @@ export function PieChartWithLabels({
     const left = clone.filter((l) => !l.isRight).sort((a, b) => a.rawY - b.rawY);
     const right = clone.filter((l) => l.isRight).sort((a, b) => a.rawY - b.rawY);
 
-    const ROW_H = 38; // height of one label row (allows 2-line names)
+    const ROW_H = 48; // height of one label row (allows 2-line names)
 
     const deOverlap = (arr: ComputedLabel[]) => {
       // push down

@@ -6,6 +6,7 @@ import {
   Alert,
   TextInput,
   Modal,
+  TouchableOpacity as RNTouchableOpacity,
 } from 'react-native';
 // CRITICAL: Use gesture-handler's TouchableOpacity inside DraggableFlatList
 // RN's TouchableOpacity conflicts with gesture-handler and breaks drag
@@ -392,7 +393,7 @@ function CategoryEditScreen() {
             <Text style={[styles.iconLabel, { color: theme.text.secondary }]}>Choose icon:</Text>
             <View style={styles.iconGrid}>
               {ICON_OPTIONS.map((icon) => (
-                <TouchableOpacity
+                <RNTouchableOpacity
                   key={icon}
                   style={[
                     styles.iconOption,
@@ -400,9 +401,10 @@ function CategoryEditScreen() {
                     editIcon === icon && { borderColor: theme.primary, backgroundColor: `${theme.primary}15` },
                   ]}
                   onPress={() => setEditIcon(icon)}
+                  activeOpacity={0.6}
                 >
                   <Text style={styles.iconText}>{icon}</Text>
-                </TouchableOpacity>
+                </RNTouchableOpacity>
               ))}
             </View>
 

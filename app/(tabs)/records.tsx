@@ -29,6 +29,7 @@ function EditRecordsScreen() {
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'expense' | 'income'>('all');
   const [includeFuture, setIncludeFuture] = useState(false);
+  const [showTime, setShowTime] = useState(false);
 
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
@@ -58,8 +59,12 @@ function EditRecordsScreen() {
       );
     }
 
-    // Sort by date (newest first)
-    result.sort((a, b) => b.date.localeCompare(a.date));
+    // Sort by date (newest first), then by createdAt time (newest first) for same-date entries
+    result.sort((a, b) => {
+      const dateCmp = b.date.localeCompare(a.date);
+      if (dateCmp !== 0) return dateCmp;
+      return b.createdAt.localeCompare(a.createdAt);
+    });
     return result;
   }, [transactions, search, filterType, includeFuture, today]);
 
@@ -86,6 +91,18 @@ function EditRecordsScreen() {
     );
   }
 
+  function formatTxDateTime(tx: Transaction): string {
+    if (!showTime) return tx.date;
+    try {
+      const d = new Date(tx.createdAt);
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mm = String(d.getMinutes()).padStart(2, '0');
+      return `${tx.date} ${hh}:${mm}`;
+    } catch {
+      return tx.date;
+    }
+  }
+
   function renderTransaction({ item }: { item: Transaction }) {
     const isExpense = item.type === 'expense';
     const hasDetails = item.title || item.description;
@@ -98,7 +115,7 @@ function EditRecordsScreen() {
               <Text style={[styles.txAmount, { color: isExpense ? theme.error : theme.success }]}>
                 {isExpense ? '-' : '+'}{item.currency} {item.amount.toFixed(2)}
               </Text>
-              <Text style={[styles.txDate, { color: theme.text.tertiary }]}>{item.date}</Text>
+              <Text style={[styles.txDate, { color: theme.text.tertiary }]}>{formatTxDateTime(item)}</Text>
             </View>
             <Text style={[styles.txCategory, { color: theme.text.secondary }]} numberOfLines={1}>
               {item.categoryPath.join(' > ')}
@@ -171,21 +188,37 @@ function EditRecordsScreen() {
         <Text style={[styles.countText, { color: theme.text.tertiary }]}>{filtered.length} records</Text>
       </View>
 
-      {/* Include future toggle */}
-      <TouchableOpacity
-        style={styles.futureToggleRow}
-        onPress={() => setIncludeFuture((prev) => !prev)}
-        activeOpacity={0.7}
-      >
-        <Ionicons
-          name={includeFuture ? 'checkbox' : 'square-outline'}
-          size={20}
-          color={includeFuture ? theme.primary : theme.text.tertiary}
-        />
-        <Text style={[styles.futureToggleText, { color: theme.text.secondary }]}>
-          Include future transactions
-        </Text>
-      </TouchableOpacity>
+      {/* Toggle row: Include future & Show time */}
+      <View style={styles.toggleRow}>
+        <TouchableOpacity
+          style={styles.toggleItem}
+          onPress={() => setIncludeFuture((prev) => !prev)}
+          activeOpacity={0.7}
+        >
+          <Ionicons
+            name={includeFuture ? 'checkbox' : 'square-outline'}
+            size={20}
+            color={includeFuture ? theme.primary : theme.text.tertiary}
+          />
+          <Text style={[styles.futureToggleText, { color: theme.text.secondary }]}>
+            Include future transactions
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.toggleItem}
+          onPress={() => setShowTime((prev) => !prev)}
+          activeOpacity={0.7}
+        >
+          <Ionicons
+            name={showTime ? 'checkbox' : 'square-outline'}
+            size={20}
+            color={showTime ? theme.primary : theme.text.tertiary}
+          />
+          <Text style={[styles.futureToggleText, { color: theme.text.secondary }]}>
+            Show time
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Records list */}
       <FlatList
@@ -248,11 +281,16 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZE.xs,
     marginLeft: 'auto',
   },
-  futureToggleRow: {
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: SPACING.md,
+  },
+  toggleItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.xs,
-    marginBottom: SPACING.md,
   },
   futureToggleText: {
     fontSize: FONT_SIZE.sm,
