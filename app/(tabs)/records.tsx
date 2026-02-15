@@ -28,9 +28,17 @@ function EditRecordsScreen() {
   const deleteMutation = useDeleteTransaction();
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'expense' | 'income'>('all');
+  const [includeFuture, setIncludeFuture] = useState(false);
+
+  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
   const filtered = useMemo(() => {
     let result = [...transactions];
+
+    // Exclude future transactions unless toggled on
+    if (!includeFuture) {
+      result = result.filter((t) => t.date <= today);
+    }
 
     // Filter by type
     if (filterType !== 'all') {
@@ -53,7 +61,7 @@ function EditRecordsScreen() {
     // Sort by date (newest first)
     result.sort((a, b) => b.date.localeCompare(a.date));
     return result;
-  }, [transactions, search, filterType]);
+  }, [transactions, search, filterType, includeFuture, today]);
 
   function handleEdit(tx: Transaction) {
     logger.info(TAG, 'Edit transaction', { id: tx.id });
@@ -165,6 +173,22 @@ function EditRecordsScreen() {
         <Text style={[styles.countText, { color: theme.text.tertiary }]}>{filtered.length} records</Text>
       </View>
 
+      {/* Include future toggle */}
+      <TouchableOpacity
+        style={styles.futureToggleRow}
+        onPress={() => setIncludeFuture((prev) => !prev)}
+        activeOpacity={0.7}
+      >
+        <Ionicons
+          name={includeFuture ? 'checkbox' : 'square-outline'}
+          size={20}
+          color={includeFuture ? theme.primary : theme.text.tertiary}
+        />
+        <Text style={[styles.futureToggleText, { color: theme.text.secondary }]}>
+          Include future transactions
+        </Text>
+      </TouchableOpacity>
+
       {/* Records list */}
       <FlatList
         data={filtered}
@@ -225,6 +249,15 @@ const styles = StyleSheet.create({
   countText: {
     fontSize: FONT_SIZE.xs,
     marginLeft: 'auto',
+  },
+  futureToggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+    marginBottom: SPACING.md,
+  },
+  futureToggleText: {
+    fontSize: FONT_SIZE.sm,
   },
   list: { paddingBottom: SPACING.xxxl },
   txCard: { marginBottom: SPACING.sm },

@@ -94,7 +94,7 @@ function AddTransactionScreen() {
   );
 
   const [selectedCurrency, setSelectedCurrency] = useState(settings.mainCurrency);
-  const [categoryPath, setCategoryPath] = useState<string[]>([]);
+  const [categoryPath, setCategoryPath] = useState<string[]>(['Unclassified']);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isMultiTimes, setIsMultiTimes] = useState(false);
