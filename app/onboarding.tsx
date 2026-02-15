@@ -153,6 +153,7 @@ function OnboardingScreen() {
                   ]}
                   onPress={() => setSelectedLang(item.code)}
                 >
+                  <Text style={styles.optionFlag}>{item.flag}</Text>
                   <Text style={[styles.optionText, { color: theme.text.primary }]}>
                     {item.label === item.nativeName ? item.label : `${item.label} ${item.nativeName}`}
                   </Text>
@@ -313,7 +314,10 @@ function OnboardingScreen() {
                       borderWidth: 2,
                     },
                   ]}
-                  onPress={() => setSelectedTheme(themeOpt.mode)}
+                  onPress={() => {
+                    setSelectedTheme(themeOpt.mode);
+                    saveMutation.mutate({ themeMode: themeOpt.mode });
+                  }}
                 >
                   <Ionicons
                     name={themeOpt.icon as any}
@@ -607,7 +611,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.lg,
     borderBottomWidth: 1,
   },
-  optionText: { fontSize: FONT_SIZE.md },
+  optionFlag: {
+    fontSize: 24,
+    marginRight: SPACING.md,
+  },
+  optionText: { fontSize: FONT_SIZE.md, flex: 1 },
   // Currency dropdown (matches currency-tags page)
   currencyDropdown: {
     flexDirection: 'row',

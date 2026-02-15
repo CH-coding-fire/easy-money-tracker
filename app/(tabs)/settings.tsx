@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -39,10 +39,12 @@ function SettingsScreen() {
   const { showToast } = useUIStore();
   const theme = useTheme();
 
+  const scrollRef = useRef<ScrollView>(null);
   const [showLangPicker, setShowLangPicker] = useState(false);
   const [showThemePicker, setShowThemePicker] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
+  const prevDebugMode = useRef(settings.debugMode);
 
   async function handleExport() {
     setExporting(true);
@@ -97,28 +99,41 @@ function SettingsScreen() {
     setShowThemePicker(false);
   }
 
+  // Scroll to bottom when debug mode is toggled on
+  useEffect(() => {
+    if (settings.debugMode && !prevDebugMode.current) {
+      // Wait for the debug panel to render, then scroll to end
+      setTimeout(() => {
+        scrollRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
+    prevDebugMode.current = settings.debugMode;
+  }, [settings.debugMode]);
+
   const selectedLang = LANGUAGES.find((l) => l.code === settings.language)?.label ?? settings.language;
+  const selectedLangFlag = LANGUAGES.find((l) => l.code === settings.language)?.flag ?? '';
   const selectedTheme = THEME_OPTIONS.find((t) => t.mode === settings.themeMode)?.label ?? 'Light';
 
   return (
     <ScreenContainer padBottom={false}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <Text style={[styles.screenTitle, { color: theme.text.primary }]}>Settings</Text>
+      <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false}>
+        {/* Language */}
+        <Card style={styles.settingCard}>
+          <Text style={[styles.settingLabel, { color: theme.text.secondary }]}>Language</Text>
+          <TouchableOpacity style={styles.settingValue} onPress={() => setShowLangPicker(true)}>
+            <View style={styles.settingValueWithFlag}>
+              {selectedLangFlag && <Text style={styles.settingFlag}>{selectedLangFlag}</Text>}
+              <Text style={[styles.valueText, { color: theme.text.primary }]}>{selectedLang}</Text>
+            </View>
+            <Ionicons name="chevron-down" size={16} color={theme.text.tertiary} />
+          </TouchableOpacity>
+        </Card>
 
         {/* Theme */}
         <Card style={styles.settingCard}>
           <Text style={[styles.settingLabel, { color: theme.text.secondary }]}>Theme</Text>
           <TouchableOpacity style={styles.settingValue} onPress={() => setShowThemePicker(true)}>
             <Text style={[styles.valueText, { color: theme.text.primary }]}>{selectedTheme}</Text>
-            <Ionicons name="chevron-down" size={16} color={theme.text.tertiary} />
-          </TouchableOpacity>
-        </Card>
-
-        {/* Language */}
-        <Card style={styles.settingCard}>
-          <Text style={[styles.settingLabel, { color: theme.text.secondary }]}>Language</Text>
-          <TouchableOpacity style={styles.settingValue} onPress={() => setShowLangPicker(true)}>
-            <Text style={[styles.valueText, { color: theme.text.primary }]}>{selectedLang}</Text>
             <Ionicons name="chevron-down" size={16} color={theme.text.tertiary} />
           </TouchableOpacity>
         </Card>
@@ -308,6 +323,7 @@ function SettingsScreen() {
                   ]}
                   onPress={() => handleLanguageSelect(item.code)}
                 >
+                  <Text style={styles.langFlag}>{item.flag}</Text>
                   <Text style={[styles.langText, { color: theme.text.primary }]}>
                     {item.label === item.nativeName ? item.label : `${item.label} ${item.nativeName}`}
                   </Text>
@@ -353,6 +369,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: SPACING.xs,
+  },
+  settingValueWithFlag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    flex: 1,
+  },
+  settingFlag: {
+    fontSize: 20,
   },
   valueText: { fontSize: FONT_SIZE.md },
   weekRow: { flexDirection: 'row', gap: SPACING.sm },
@@ -430,5 +455,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.sm,
     borderBottomWidth: 1,
   },
-  langText: { fontSize: FONT_SIZE.md },
+  langFlag: {
+    fontSize: 24,
+    marginRight: SPACING.md,
+  },
+  langText: { fontSize: FONT_SIZE.md, flex: 1 },
 });

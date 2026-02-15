@@ -72,7 +72,7 @@ const styles = StyleSheet.create({
   container: {
     borderRadius: BORDER_RADIUS.lg,
     padding: SPACING.lg,
-    marginTop: SPACING.lg,
+    marginBottom: SPACING.md,
     borderWidth: 1,
   },
   title: {
