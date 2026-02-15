@@ -185,10 +185,21 @@ function CategoryEditScreen() {
         }}
       />
 
-      <Text style={[styles.sectionLabel, { color: theme.text.primary }]}>All Categories</Text>
-      <Text style={[styles.sectionHint, { color: theme.text.tertiary }]}>
-        Long press ☰ to drag & reorder. Tap ▼ to expand subcategories.
-      </Text>
+      <View style={[styles.headerSection]}>
+        <Text style={[styles.sectionLabel, { color: theme.text.primary }]}>All Categories</Text>
+        <Text style={[styles.sectionHint, { color: theme.text.tertiary }]}>
+          Long press ☰ to drag & reorder. Tap ▼ to expand subcategories.
+        </Text>
+      </View>
+
+      <TouchableOpacity 
+        style={[styles.addCategoryButton, { backgroundColor: theme.primary }]} 
+        onPress={() => openAddModal([])}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="add" size={20} color="#FFFFFF" />
+        <Text style={styles.addCategoryText}>Add Category</Text>
+      </TouchableOpacity>
 
       {/* Scrollable content with nested drag support */}
       <NestableScrollContainer
@@ -466,11 +477,6 @@ function CategoryEditScreen() {
             </View>
           }
         />
-
-        {/* Add root category button */}
-        <View style={styles.addRow}>
-          <Button title="+ Add Category" onPress={() => openAddModal([])} variant="primary" />
-        </View>
       </NestableScrollContainer>
 
       {/* ── Edit / Add Modal ── */}
@@ -598,14 +604,32 @@ export default function CategoryEditWithBoundary() {
 
 const styles = StyleSheet.create({
   sectionLabel: {
-    fontSize: FONT_SIZE.md,
+    fontSize: FONT_SIZE.lg,
     fontWeight: '700',
     marginBottom: SPACING.xs,
-    marginTop: SPACING.md,
   },
   sectionHint: {
     fontSize: FONT_SIZE.xs,
-    marginBottom: SPACING.sm,
+    lineHeight: 16,
+  },
+  headerSection: {
+    marginTop: SPACING.md,
+    marginBottom: SPACING.md,
+  },
+  addCategoryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SPACING.sm + 2,
+    paddingHorizontal: SPACING.lg,
+    borderRadius: BORDER_RADIUS.md,
+    marginBottom: SPACING.lg,
+    gap: SPACING.xs,
+  },
+  addCategoryText: {
+    color: '#FFFFFF',
+    fontSize: FONT_SIZE.md,
+    fontWeight: '600',
   },
   scrollContent: {
     paddingBottom: SPACING.lg,
@@ -665,10 +689,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
 
-  // ── Empty + add ──
+  // ── Empty ──
   empty: { alignItems: 'center', paddingVertical: SPACING.xxxl },
   emptyText: { fontSize: FONT_SIZE.md },
-  addRow: { paddingVertical: SPACING.md },
 
   // ── Modal ──
   modalOverlay: {
