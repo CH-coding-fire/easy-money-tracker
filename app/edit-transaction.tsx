@@ -240,8 +240,9 @@ function EditTransactionScreen() {
             onSelect={setTransactionType}
           />
 
-          {/* Row 1: Amount + Currency */}
-          <Card style={styles.row}>
+          {/* Row 1: Amount + Currency + Tags */}
+          <View style={styles.row}>
+            <Text style={[styles.sectionLabel, { color: theme.text.secondary }]}>Amount</Text>
             <View style={styles.amountRow}>
               <TouchableOpacity
                 style={[styles.currencyBtn, { backgroundColor: `${theme.primary}20` }]}
@@ -267,36 +268,32 @@ function EditTransactionScreen() {
                       onBlur={onBlur}
                       error={errors.amount?.message}
                       containerStyle={{ marginBottom: 0 }}
+                      style={{ paddingVertical: 6, paddingHorizontal: 8, fontSize: FONT_SIZE.md }}
                     />
                   )}
                 />
               </View>
+              {/* Currency quick-switch tags inline with amount */}
+              {[...new Set([settings.mainCurrency, ...settings.secondaryCurrencies, ...settings.frequentCurrencies])]
+                .filter(code => code !== selectedCurrency)
+                .slice(0, 6)
+                .map((code) => (
+                  <TouchableOpacity
+                    key={code}
+                    style={[styles.currencyTag, { backgroundColor: theme.background, borderColor: theme.border }]}
+                    onPress={() => setSelectedCurrency(code)}
+                  >
+                    <Text style={[styles.currencyTagText, { color: theme.text.secondary }]}>{code}</Text>
+                  </TouchableOpacity>
+                ))}
+              <TouchableOpacity
+                style={[styles.currencyEditBtn, { backgroundColor: `${theme.warning}15`, borderColor: `${theme.warning}40` }]}
+                onPress={() => router.push('/currency-tags')}
+              >
+                <Ionicons name="create-outline" size={16} color={theme.warning} />
+              </TouchableOpacity>
             </View>
-
-            {/* Secondary currency quick-switch tags */}
-            {(settings.secondaryCurrencies.length > 0 || settings.frequentCurrencies.length > 0) && (
-              <View style={styles.currencyTagsRow}>
-                {[...new Set([settings.mainCurrency, ...settings.secondaryCurrencies, ...settings.frequentCurrencies])]
-                  .filter(code => code !== selectedCurrency)
-                  .slice(0, 6)
-                  .map((code) => (
-                    <TouchableOpacity
-                      key={code}
-                      style={[styles.currencyTag, { backgroundColor: theme.background, borderColor: theme.border }]}
-                      onPress={() => setSelectedCurrency(code)}
-                    >
-                      <Text style={[styles.currencyTagText, { color: theme.text.secondary }]}>{code}</Text>
-                    </TouchableOpacity>
-                  ))}
-                <TouchableOpacity
-                  style={[styles.currencyEditBtn, { backgroundColor: `${theme.warning}15`, borderColor: `${theme.warning}40` }]}
-                  onPress={() => router.push('/currency-tags')}
-                >
-                  <Ionicons name="create-outline" size={16} color={theme.warning} />
-                </TouchableOpacity>
-              </View>
-            )}
-          </Card>
+          </View>
 
           {/* Row 2+3: Category */}
           <View style={styles.row}>
@@ -525,47 +522,38 @@ const styles = StyleSheet.create({
   },
   amountRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: SPACING.sm,
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 4,
+    rowGap: 6,
   },
   currencyBtn: {
-    paddingVertical: SPACING.sm + 2,
-    paddingHorizontal: SPACING.md,
-    borderRadius: 8,
-    marginTop: 2,
+    paddingVertical: 7,
+    paddingHorizontal: SPACING.sm,
+    borderRadius: 6,
   },
   currencyText: {
-    fontSize: FONT_SIZE.md,
+    fontSize: FONT_SIZE.sm,
     fontWeight: '700',
   },
   amountInput: {
-    flex: 1,
-  },
-  currencyTagsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: SPACING.xs,
-    marginTop: SPACING.md,
-    alignItems: 'center',
+    width: 120,
   },
   currencyTag: {
-    paddingVertical: SPACING.sm - 2,
-    paddingHorizontal: SPACING.md,
+    paddingVertical: 5,
+    paddingHorizontal: SPACING.sm,
     borderRadius: 6,
     borderWidth: 1,
-    minWidth: 55,
     alignItems: 'center',
   },
   currencyTagText: {
-    fontSize: FONT_SIZE.sm,
+    fontSize: FONT_SIZE.xs,
     fontWeight: '600',
   },
   currencyEditBtn: {
-    paddingVertical: SPACING.xs - 2,
-    paddingHorizontal: SPACING.xs,
+    padding: 5,
     borderRadius: 6,
     borderWidth: 1,
-    marginLeft: SPACING.xs,
     alignItems: 'center',
     justifyContent: 'center',
   },
