@@ -193,7 +193,7 @@ function AddTransactionScreen() {
 
       // Reset form
       reset({ amount: '', title: '', description: '' });
-      setCategoryPath([]);
+      setCategoryPath(['Unclassified']);
       setSelectedDate(new Date());
       setIsMultiTimes(false);
       setMultiTimesConfig(null);

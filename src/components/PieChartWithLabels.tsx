@@ -68,6 +68,50 @@ export function PieChartWithLabels({
     [data],
   );
 
+  /* ---- Balance left / right label distribution -------------------- */
+  // Reorder slices so labels are spread evenly across both sides of the
+  // pie instead of clustering on the left when one category dominates.
+  const balancedData = useMemo(() => {
+    if (data.length <= 2 || total === 0) return data;
+
+    // data is expected to arrive sorted descending by value.
+    const sorted = [...data].sort((a, b) => b.value - a.value);
+
+    const rightGroup: PieDataItem[] = [];
+    const leftGroup: PieDataItem[] = [];
+
+    // 1. Always place the largest item in the right group.
+    rightGroup.push(sorted[0]);
+    let rightDeg = (sorted[0].value / total) * 360;
+
+    // 2. From the remaining items (smallest first), greedily fill the
+    //    right group while total degrees stays within ~185°.
+    const remaining = sorted.slice(1); // still sorted desc
+    const usedIdx = new Set<number>();
+
+    for (let i = remaining.length - 1; i >= 0; i--) {
+      const itemDeg = (remaining[i].value / total) * 360;
+      if (rightDeg + itemDeg <= 185) {
+        rightGroup.push(remaining[i]);
+        rightDeg += itemDeg;
+        usedIdx.add(i);
+      }
+    }
+
+    // 3. Everything else goes to the left group.
+    for (let i = 0; i < remaining.length; i++) {
+      if (!usedIdx.has(i)) leftGroup.push(remaining[i]);
+    }
+
+    // 4. Right group: sorted descending (largest at 12 o'clock).
+    //    Left group: sorted ascending so the smallest items are near the
+    //    bottom (6 o'clock) and the largest are near the top-left.
+    rightGroup.sort((a, b) => b.value - a.value);
+    leftGroup.sort((a, b) => a.value - b.value);
+
+    return [...rightGroup, ...leftGroup];
+  }, [data, total]);
+
   /* ---- Responsive sizing ----------------------------------------- */
   // Ensure at least 70 px on each side for labels.
   const LABEL_MIN_WIDTH = 70;
@@ -84,10 +128,10 @@ export function PieChartWithLabels({
 
   /* ---- Build label list ------------------------------------------ */
   const labels = useMemo((): ComputedLabel[] => {
-    if (data.length === 0 || total === 0) return [];
+    if (balancedData.length === 0 || total === 0) return [];
 
     let cur = -90; // start at 12 o'clock
-    return data.map((item) => {
+    return balancedData.map((item) => {
       const pct = (item.value / total) * 100;
       const slice = (item.value / total) * 360;
       const mid = cur + slice / 2;
@@ -99,7 +143,7 @@ export function PieChartWithLabels({
 
       return { angle: mid, isRight, rawY, y: rawY, item, pct };
     });
-  }, [data, total, pieRadius, centerY]);
+  }, [balancedData, total, pieRadius, centerY]);
 
   /* ---- De-overlap labels ----------------------------------------- */
   const positioned = useMemo(() => {
@@ -170,10 +214,10 @@ export function PieChartWithLabels({
 
   /* ---- Percentage positions (inside the slices) -------------------- */
   const slicePctLabels = useMemo(() => {
-    if (data.length === 0 || total === 0) return [];
+    if (balancedData.length === 0 || total === 0) return [];
     const midR = (pieRadius + pieInnerRadius) / 2;
     let cur = -90;
-    return data.map((item) => {
+    return balancedData.map((item) => {
       const pct = (item.value / total) * 100;
       const slice = (item.value / total) * 360;
       const mid = cur + slice / 2;
@@ -187,7 +231,7 @@ export function PieChartWithLabels({
         visible: pct >= 5,
       };
     });
-  }, [data, total, pieRadius, pieInnerRadius, centerX, centerY]);
+  }, [balancedData, total, pieRadius, pieInnerRadius, centerX, centerY]);
 
   /* ---- Available width for each label ----------------------------- */
   const rightLabelStart = centerX + pieRadius + LINE_GAP + 10;
@@ -209,7 +253,7 @@ export function PieChartWithLabels({
           }}
         >
           <PieChart
-            data={data.map((d) => ({
+            data={balancedData.map((d) => ({
               value: d.value,
               color: d.color,
               text: d.text,

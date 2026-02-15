@@ -196,6 +196,9 @@ function SettingsScreen() {
         {/* Export/Import */}
         <Card style={styles.settingCard}>
           <Text style={[styles.settingLabel, { color: theme.text.secondary }]}>Data</Text>
+          <Text style={[styles.dataDesc, { color: theme.text.secondary }]}>
+            Back up your data or migrate it to another phone.
+          </Text>
           <View style={styles.dataRow}>
             <Button
               title="Export"
@@ -389,6 +392,7 @@ const styles = StyleSheet.create({
   },
   weekBtnText: { fontSize: FONT_SIZE.sm, fontWeight: '600' },
   weekBtnTextActive: { color: '#fff' },
+  dataDesc: { fontSize: FONT_SIZE.sm, marginBottom: SPACING.sm, opacity: 0.7 },
   dataRow: { flexDirection: 'row', gap: SPACING.sm },
   debugToggle: {
     flexDirection: 'row',

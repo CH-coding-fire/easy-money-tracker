@@ -35,6 +35,8 @@ import { convertCurrency } from '../../src/utils/fxConvert';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CHART_WIDTH = SCREEN_WIDTH - SPACING.lg * 4;
+/** Let pie charts bleed into the Card padding so labels have more room. */
+const PIE_BLEED = SPACING.md; // 12 px each side
 
 /** Shorten large Y-axis numbers: 1200 → 1.2K, 1500000 → 1.5M */
 function formatYAxisLabel(val: string): string {
@@ -445,23 +447,25 @@ function StatisticsScreen() {
             <Card style={styles.chartCard}>
               <Text style={[styles.chartTitle, { color: theme.text.primary }]}>By Category</Text>
               {pieData.length > 0 ? (
-                <PieChartWithLabels
-                  data={pieData}
-                  radius={80}
-                  innerRadius={40}
-                  centerLabel={`${statsCurrency} ${total.toFixed(0)}`}
-                  currency={statsCurrency}
-                  expandedCategory={statsDrillCategory}
-                  onSlicePress={(item) => {
-                    if ('children' in item && Object.keys(item.children ?? {}).length > 0) {
-                      // Toggle: tap same → collapse, tap different → expand
-                      setStatsDrillCategory(
-                        statsDrillCategory === item.text ? null : item.text,
-                      );
-                    }
-                  }}
-                  containerWidth={SCREEN_WIDTH - SPACING.lg * 4}
-                />
+                <View style={{ marginHorizontal: -PIE_BLEED }}>
+                  <PieChartWithLabels
+                    data={pieData}
+                    radius={80}
+                    innerRadius={40}
+                    centerLabel={`${statsCurrency} ${total.toFixed(0)}`}
+                    currency={statsCurrency}
+                    expandedCategory={statsDrillCategory}
+                    onSlicePress={(item) => {
+                      if ('children' in item && Object.keys(item.children ?? {}).length > 0) {
+                        // Toggle: tap same → collapse, tap different → expand
+                        setStatsDrillCategory(
+                          statsDrillCategory === item.text ? null : item.text,
+                        );
+                      }
+                    }}
+                    containerWidth={CHART_WIDTH + PIE_BLEED * 2}
+                  />
+                </View>
               ) : (
                 <Text style={[styles.noData, { color: theme.text.tertiary }]}>No data for this period</Text>
               )}
@@ -493,14 +497,16 @@ function StatisticsScreen() {
                     <Ionicons name="close" size={18} color={theme.text.tertiary} />
                   </TouchableOpacity>
                 </View>
-                <PieChartWithLabels
-                  data={drillPieData}
-                  radius={70}
-                  innerRadius={35}
-                  centerLabel={`${statsCurrency} ${drillTotal.toFixed(0)}`}
-                  currency={statsCurrency}
-                  containerWidth={SCREEN_WIDTH - SPACING.lg * 4}
-                />
+                <View style={{ marginHorizontal: -PIE_BLEED }}>
+                  <PieChartWithLabels
+                    data={drillPieData}
+                    radius={70}
+                    innerRadius={35}
+                    centerLabel={`${statsCurrency} ${drillTotal.toFixed(0)}`}
+                    currency={statsCurrency}
+                    containerWidth={CHART_WIDTH + PIE_BLEED * 2}
+                  />
+                </View>
               </Card>
             )}
 
