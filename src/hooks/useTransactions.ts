@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   loadAppData,
   addTransaction as addTx,
+  addTransactions as addTxBatch,
   updateTransaction as updateTx,
   deleteTransaction as deleteTx,
 } from '../services/storage';
@@ -35,6 +36,20 @@ export function useAddTransaction() {
     },
     onError: (err) => {
       logger.error(TAG, 'useAddTransaction: failed', err);
+    },
+  });
+}
+
+export function useAddTransactions() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (txs: Transaction[]) => addTxBatch(txs),
+    onSuccess: (data) => {
+      logger.info(TAG, 'useAddTransactions: invalidating cache');
+      qc.setQueryData(QUERY_KEY, data);
+    },
+    onError: (err) => {
+      logger.error(TAG, 'useAddTransactions: failed', err);
     },
   });
 }

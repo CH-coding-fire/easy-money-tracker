@@ -10,8 +10,10 @@ import {
 import { SPACING, FONT_SIZE, BORDER_RADIUS } from '../constants/spacing';
 import { clearAllData, loadAppData } from '../services/storage';
 import { useQueryClient } from '@tanstack/react-query';
+import { useTheme } from '../hooks/useTheme';
 
 export function DebugPanel() {
+  const theme = useTheme();
   const [storageContents, setStorageContents] = useState<string>('');
   const [expanded, setExpanded] = useState(false);
   const qc = useQueryClient();
@@ -39,21 +41,27 @@ export function DebugPanel() {
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>🛠️ Debug Panel</Text>
+    <View style={[styles.container, { backgroundColor: `${theme.warning}15`, borderColor: `${theme.warning}40` }]}>
+      <Text style={[styles.title, { color: theme.warning }]}>🛠️ Debug Panel</Text>
 
       <View style={styles.row}>
-        <TouchableOpacity style={styles.btn} onPress={handleViewStorage}>
-          <Text style={styles.btnText}>View Storage</Text>
+        <TouchableOpacity
+          style={[styles.btn, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}
+          onPress={handleViewStorage}
+        >
+          <Text style={[styles.btnText, { color: theme.text.primary }]}>View Storage</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.btn, styles.dangerBtn]} onPress={handleClearData}>
-          <Text style={[styles.btnText, styles.dangerText]}>Clear All Data</Text>
+        <TouchableOpacity
+          style={[styles.btn, { backgroundColor: theme.cardBackground, borderColor: theme.error }]}
+          onPress={handleClearData}
+        >
+          <Text style={[styles.btnText, { color: theme.error }]}>Clear All Data</Text>
         </TouchableOpacity>
       </View>
 
       {expanded && storageContents.length > 0 && (
-        <ScrollView style={styles.storageView} nestedScrollEnabled>
-          <Text style={styles.storageText}>{storageContents}</Text>
+        <ScrollView style={[styles.storageView, { backgroundColor: theme.cardBackground }]} nestedScrollEnabled>
+          <Text style={[styles.storageText, { color: theme.text.secondary }]}>{storageContents}</Text>
         </ScrollView>
       )}
     </View>
@@ -62,17 +70,14 @@ export function DebugPanel() {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#FFF8E1',
     borderRadius: BORDER_RADIUS.lg,
     padding: SPACING.lg,
     marginTop: SPACING.lg,
     borderWidth: 1,
-    borderColor: '#FFE082',
   },
   title: {
     fontSize: FONT_SIZE.lg,
     fontWeight: '700',
-    color: '#F57F17',
     marginBottom: SPACING.md,
   },
   row: {
@@ -82,33 +87,22 @@ const styles = StyleSheet.create({
   btn: {
     flex: 1,
     paddingVertical: SPACING.sm,
-    backgroundColor: '#fff',
     borderRadius: BORDER_RADIUS.md,
     borderWidth: 1,
-    borderColor: '#ddd',
     alignItems: 'center',
-  },
-  dangerBtn: {
-    borderColor: '#F44336',
   },
   btnText: {
     fontSize: FONT_SIZE.sm,
     fontWeight: '600',
-    color: '#333',
-  },
-  dangerText: {
-    color: '#F44336',
   },
   storageView: {
     maxHeight: 300,
     marginTop: SPACING.md,
-    backgroundColor: '#fff',
     borderRadius: BORDER_RADIUS.md,
     padding: SPACING.sm,
   },
   storageText: {
     fontSize: 10,
     fontFamily: 'monospace',
-    color: '#333',
   },
 });

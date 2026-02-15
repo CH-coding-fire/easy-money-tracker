@@ -150,6 +150,34 @@ export function shiftDateRange(
   }
 }
 
+/** Generate N dates starting from a given date, spaced by the given frequency */
+export function generateMultiDates(
+  startDate: Date,
+  frequency: 'daily' | 'weekly' | 'monthly' | 'yearly',
+  count: number
+): Date[] {
+  const dates: Date[] = [];
+  for (let i = 0; i < count; i++) {
+    const d = new Date(startDate);
+    switch (frequency) {
+      case 'daily':
+        d.setDate(d.getDate() + i);
+        break;
+      case 'weekly':
+        d.setDate(d.getDate() + i * 7);
+        break;
+      case 'monthly':
+        d.setMonth(d.getMonth() + i);
+        break;
+      case 'yearly':
+        d.setFullYear(d.getFullYear() + i);
+        break;
+    }
+    dates.push(d);
+  }
+  return dates;
+}
+
 /** Format a date range for display */
 export function formatDateRange(range: DateRange): string {
   if (range.start === range.end) return range.start;

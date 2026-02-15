@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import { SPACING, FONT_SIZE } from '../constants/spacing';
+import { useTheme } from '../hooks/useTheme';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
@@ -26,6 +27,8 @@ function formatLabel(n: number): string {
 }
 
 export function BalanceBarChart({ data, height = 200, currency }: BalanceBarChartProps) {
+  const theme = useTheme();
+
   const { maxAbs, hasPos, hasNeg, posRatio, negRatio, yLabels } = useMemo(() => {
     if (data.length === 0) return { maxAbs: 1, hasPos: false, hasNeg: false, posRatio: 0.5, negRatio: 0.5, yLabels: [] };
 
@@ -75,7 +78,7 @@ export function BalanceBarChart({ data, height = 200, currency }: BalanceBarChar
   }, [data]);
 
   if (data.length === 0) {
-    return <Text style={styles.noData}>No data for this period</Text>;
+    return <Text style={[styles.noData, { color: theme.text.tertiary }]}>No data for this period</Text>;
   }
 
   const posAreaHeight = height * posRatio;
@@ -102,19 +105,19 @@ export function BalanceBarChart({ data, height = 200, currency }: BalanceBarChar
         <View style={{ height: posAreaHeight, justifyContent: 'space-between' }}>
           {hasPos ? (
             <>
-              <Text style={styles.yLabel}>{formatLabel(Math.ceil(posScale))}</Text>
-              <Text style={styles.yLabel}>{formatLabel(Math.ceil(posScale / 2))}</Text>
+              <Text style={[styles.yLabel, { color: theme.text.tertiary }]}>{formatLabel(Math.ceil(posScale))}</Text>
+              <Text style={[styles.yLabel, { color: theme.text.tertiary }]}>{formatLabel(Math.ceil(posScale / 2))}</Text>
             </>
           ) : (
             <View style={{ flex: 1 }} />
           )}
         </View>
-        <Text style={[styles.yLabel, styles.zeroLabel]}>0</Text>
+        <Text style={[styles.yLabel, styles.zeroLabel, { color: theme.text.secondary }]}>0</Text>
         <View style={{ height: negAreaHeight, justifyContent: 'space-between' }}>
           {hasNeg ? (
             <>
-              <Text style={styles.yLabel}>{formatLabel(-Math.ceil(negScale / 2))}</Text>
-              <Text style={styles.yLabel}>{formatLabel(-Math.ceil(negScale))}</Text>
+              <Text style={[styles.yLabel, { color: theme.text.tertiary }]}>{formatLabel(-Math.ceil(negScale / 2))}</Text>
+              <Text style={[styles.yLabel, { color: theme.text.tertiary }]}>{formatLabel(-Math.ceil(negScale))}</Text>
             </>
           ) : (
             <View style={{ flex: 1 }} />
@@ -136,7 +139,7 @@ export function BalanceBarChart({ data, height = 200, currency }: BalanceBarChar
                   <View style={{ flex: 1 }} />
                   {barH > 0 && (
                     <View
-                      style={[styles.bar, styles.barPositive, { height: barH }]}
+                      style={[styles.bar, { height: barH, backgroundColor: theme.success }]}
                     />
                   )}
                 </View>
@@ -146,7 +149,7 @@ export function BalanceBarChart({ data, height = 200, currency }: BalanceBarChar
         </View>
 
         {/* Zero line */}
-        <View style={styles.zeroLine} />
+        <View style={[styles.zeroLine, { backgroundColor: theme.text.secondary }]} />
 
         {/* Negative area */}
         <View style={[styles.negArea, { height: negAreaHeight }]}>
@@ -159,7 +162,7 @@ export function BalanceBarChart({ data, height = 200, currency }: BalanceBarChar
                 <View key={i} style={[styles.barColumn, { width: barWidth, marginRight: barSpacing }]}>
                   {barH > 0 && (
                     <View
-                      style={[styles.bar, styles.barNegative, { height: barH }]}
+                      style={[styles.bar, { height: barH, backgroundColor: theme.error }]}
                     />
                   )}
                   <View style={{ flex: 1 }} />
@@ -179,6 +182,7 @@ export function BalanceBarChart({ data, height = 200, currency }: BalanceBarChar
                 key={i}
                 numberOfLines={1}
                 style={[styles.xLabel, {
+                  color: theme.text.tertiary,
                   position: 'absolute',
                   left: centerX - 22,
                   width: 44,
@@ -206,12 +210,10 @@ const styles = StyleSheet.create({
   },
   yLabel: {
     fontSize: 9,
-    color: '#999',
     fontVariant: ['tabular-nums'],
   },
   zeroLabel: {
     fontWeight: '600',
-    color: '#666',
   },
   chartArea: {
     flex: 1,
@@ -235,15 +237,8 @@ const styles = StyleSheet.create({
     width: '100%',
     borderRadius: 3,
   },
-  barPositive: {
-    backgroundColor: '#4CAF50',
-  },
-  barNegative: {
-    backgroundColor: '#F44336',
-  },
   zeroLine: {
     height: 1,
-    backgroundColor: '#333',
   },
   xLabelsRow: {
     position: 'relative',
@@ -251,12 +246,10 @@ const styles = StyleSheet.create({
   },
   xLabel: {
     fontSize: 9,
-    color: '#999',
     textAlign: 'center',
   },
   noData: {
     textAlign: 'center',
-    color: '#999',
     fontSize: FONT_SIZE.md,
     paddingVertical: SPACING.xl,
   },

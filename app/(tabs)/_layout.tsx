@@ -3,12 +3,14 @@ import { Tabs, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSettings } from '../../src/hooks/useSettings';
+import { useTheme } from '../../src/hooks/useTheme';
 import { useAppData } from '../../src/hooks/useTransactions';
 
 export default function TabLayout() {
   const router = useRouter();
   const { data, isLoading } = useAppData();
   const insets = useSafeAreaInsets();
+  const theme = useTheme();
 
   useEffect(() => {
     if (!isLoading && data && !data.settings.onboardingComplete) {
@@ -20,14 +22,14 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#2196F3',
-        tabBarInactiveTintColor: '#999',
+        tabBarActiveTintColor: theme.primary,
+        tabBarInactiveTintColor: theme.text.tertiary,
         tabBarStyle: {
           paddingBottom: Math.max(insets.bottom, 4),
           height: 56 + Math.max(insets.bottom, 4),
-          backgroundColor: '#fff',
+          backgroundColor: theme.cardBackground,
           borderTopWidth: 1,
-          borderTopColor: '#E0E0E0',
+          borderTopColor: theme.border,
         },
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
       }}

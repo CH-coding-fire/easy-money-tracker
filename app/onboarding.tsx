@@ -123,29 +123,40 @@ function OnboardingScreen() {
         {/* Progress dots */}
         <View style={styles.progressRow}>
           {[0, 1, 2, 3].map((i) => (
-            <View key={i} style={[styles.dot, step === i && styles.dotActive]} />
+            <View
+              key={i}
+              style={[
+                styles.dot,
+                { backgroundColor: theme.border },
+                step === i && { backgroundColor: theme.primary, width: 24 },
+              ]}
+            />
           ))}
         </View>
 
         {/* Step 0: Language */}
         {step === 0 && (
           <View style={styles.stepContainer}>
-            <Ionicons name="globe-outline" size={56} color="#2196F3" style={{ marginBottom: SPACING.md }} />
-            <Text style={styles.title}>Welcome to Easy Money Tracker!</Text>
-            <Text style={styles.subtitle}>Choose your language</Text>
+            <Ionicons name="globe-outline" size={56} color={theme.primary} style={{ marginBottom: SPACING.md }} />
+            <Text style={[styles.title, { color: theme.text.primary }]}>Welcome to Easy Money Tracker!</Text>
+            <Text style={[styles.subtitle, { color: theme.text.secondary }]}>Choose your language</Text>
 
             <FlatList
               data={LANGUAGES}
               keyExtractor={(item) => item.code}
               renderItem={({ item }) => (
                 <TouchableOpacity
-                  style={[styles.optionRow, selectedLang === item.code && styles.optionRowActive]}
+                  style={[
+                    styles.optionRow,
+                    { borderBottomColor: theme.divider },
+                    selectedLang === item.code && { backgroundColor: `${theme.primary}15` },
+                  ]}
                   onPress={() => setSelectedLang(item.code)}
                 >
-                  <Text style={styles.optionText}>
+                  <Text style={[styles.optionText, { color: theme.text.primary }]}>
                     {item.label === item.nativeName ? item.label : `${item.label} ${item.nativeName}`}
                   </Text>
-                  {selectedLang === item.code && <Ionicons name="checkmark" size={20} color="#2196F3" />}
+                  {selectedLang === item.code && <Ionicons name="checkmark" size={20} color={theme.primary} />}
                 </TouchableOpacity>
               )}
               style={styles.optionList}
@@ -157,74 +168,74 @@ function OnboardingScreen() {
         {/* Step 1: Currency */}
         {step === 1 && (
           <View style={styles.stepContainer}>
-            <Ionicons name="wallet-outline" size={56} color="#2196F3" style={{ marginBottom: SPACING.md }} />
-            <Text style={styles.title}>Set Your Currency</Text>
+            <Ionicons name="wallet-outline" size={56} color={theme.primary} style={{ marginBottom: SPACING.md }} />
+            <Text style={[styles.title, { color: theme.text.primary }]}>Set Your Currency</Text>
 
             {/* Main currency — dropdown */}
-            <Text style={styles.sectionLabel}>Main Currency</Text>
+            <Text style={[styles.sectionLabel, { color: theme.text.primary }]}>Main Currency</Text>
             <TouchableOpacity
-              style={styles.currencyDropdown}
+              style={[styles.currencyDropdown, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}
               onPress={() => {
                 setCurrencySearch('');
                 setShowCurrencyDropdown(true);
               }}
             >
               <View style={styles.currencyDropdownContent}>
-                <Text style={styles.currencyDropdownSymbol}>
+                <Text style={[styles.currencyDropdownSymbol, { color: theme.text.primary }]}>
                   {mainCurrencyInfo?.symbol ?? '?'}
                 </Text>
                 <View>
-                  <Text style={styles.currencyDropdownCode}>{selectedCurrency}</Text>
-                  <Text style={styles.currencyDropdownName}>{mainCurrencyInfo?.name ?? ''}</Text>
+                  <Text style={[styles.currencyDropdownCode, { color: theme.text.primary }]}>{selectedCurrency}</Text>
+                  <Text style={[styles.currencyDropdownName, { color: theme.text.tertiary }]}>{mainCurrencyInfo?.name ?? ''}</Text>
                 </View>
               </View>
-              <Ionicons name="chevron-down" size={20} color="#666" />
+              <Ionicons name="chevron-down" size={20} color={theme.text.secondary} />
             </TouchableOpacity>
 
             {/* Secondary currencies — dropdown */}
-            <Text style={[styles.sectionLabel, { marginTop: SPACING.xl }]}>
+            <Text style={[styles.sectionLabel, { marginTop: SPACING.xl, color: theme.text.primary }]}>
               Secondary Currencies
             </Text>
-            <Text style={styles.sectionHint}>
+            <Text style={[styles.sectionHint, { color: theme.text.tertiary }]}>
               Optional. These appear as quick-switch tags in Add &amp; Statistics screens.
             </Text>
             <TouchableOpacity
-              style={styles.currencyDropdown}
+              style={[styles.currencyDropdown, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}
               onPress={() => {
                 setCurrencySearch('');
                 setShowSecondaryPicker(true);
               }}
             >
               <View style={styles.currencyDropdownContent}>
-                <Ionicons name="add-circle-outline" size={22} color="#2196F3" />
-                <Text style={styles.addCurrencyText}>
+                <Ionicons name="add-circle-outline" size={22} color={theme.primary} />
+                <Text style={[styles.addCurrencyText, { color: theme.primary }]}>
                   {secondaryCurrencies.length > 0
                     ? `${secondaryCurrencies.length} selected`
                     : 'Add Currency'}
                 </Text>
               </View>
-              <Ionicons name="chevron-down" size={20} color="#666" />
+              <Ionicons name="chevron-down" size={20} color={theme.text.secondary} />
             </TouchableOpacity>
 
             {/* Currency Order — same as currency-tags settings */}
             {secondaryCurrencies.length > 0 && (
               <View style={{ width: '100%' }}>
-                <Text style={[styles.sectionLabel, { marginTop: SPACING.lg }]}>Currency Order</Text>
-                <Text style={styles.sectionHint}>
+                <Text style={[styles.sectionLabel, { marginTop: SPACING.lg, color: theme.text.primary }]}>Currency Order</Text>
+                <Text style={[styles.sectionHint, { color: theme.text.tertiary }]}>
                   Use the arrows to reorder your currencies.
                 </Text>
 
                 {/* Main currency — fixed at top */}
                 {mainCurrencyInfo && (
-                  <View style={[styles.orderItem, styles.orderItemMain]}>
+                  <View style={[styles.orderItem, { backgroundColor: `${theme.primary}08`, borderColor: `${theme.primary}40` }]}>
                     <View style={styles.orderArrowPlaceholder} />
-                    <Text style={styles.orderSymbol}>{mainCurrencyInfo.symbol}</Text>
+                    <Text style={[styles.orderSymbol, { color: theme.text.primary }]}>{mainCurrencyInfo.symbol}</Text>
                     <View style={styles.orderInfo}>
-                      <Text style={styles.orderCode}>{mainCurrencyInfo.code}</Text>
-                      <Text style={styles.orderName}>{mainCurrencyInfo.name}</Text>
+                      <Text style={[styles.orderCode, { color: theme.text.primary }]}>{mainCurrencyInfo.code}</Text>
+                      <Text style={[styles.orderName, { color: theme.text.tertiary }]}>{mainCurrencyInfo.name}</Text>
                     </View>
-                    <View style={styles.defaultBadge}>
-                      <Text style={styles.defaultBadgeText}>Default</Text>
+                    <View style={[styles.defaultBadge, { backgroundColor: `${theme.primary}20` }]}>
+                      <Text style={[styles.defaultBadgeText, { color: theme.primary }]}>Default</Text>
                     </View>
                   </View>
                 )}
@@ -234,7 +245,7 @@ function OnboardingScreen() {
                   const info = ALL_CURRENCIES.find((c) => c.code === code);
                   if (!info) return null;
                   return (
-                    <View key={code} style={styles.orderItem}>
+                    <View key={code} style={[styles.orderItem, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
                       <View style={styles.orderArrows}>
                         <TouchableOpacity
                           onPress={() => moveSecondary(code, 'up')}
@@ -244,7 +255,7 @@ function OnboardingScreen() {
                           <Ionicons
                             name="chevron-up"
                             size={16}
-                            color={idx === 0 ? '#ddd' : '#666'}
+                            color={idx === 0 ? theme.border : theme.text.secondary}
                           />
                         </TouchableOpacity>
                         <TouchableOpacity
@@ -255,20 +266,20 @@ function OnboardingScreen() {
                           <Ionicons
                             name="chevron-down"
                             size={16}
-                            color={idx === secondaryCurrencies.length - 1 ? '#ddd' : '#666'}
+                            color={idx === secondaryCurrencies.length - 1 ? theme.border : theme.text.secondary}
                           />
                         </TouchableOpacity>
                       </View>
-                      <Text style={styles.orderSymbol}>{info.symbol}</Text>
+                      <Text style={[styles.orderSymbol, { color: theme.text.primary }]}>{info.symbol}</Text>
                       <View style={styles.orderInfo}>
-                        <Text style={styles.orderCode}>{info.code}</Text>
-                        <Text style={styles.orderName}>{info.name}</Text>
+                        <Text style={[styles.orderCode, { color: theme.text.primary }]}>{info.code}</Text>
+                        <Text style={[styles.orderName, { color: theme.text.tertiary }]}>{info.name}</Text>
                       </View>
                       <TouchableOpacity
                         style={styles.removeBtn}
                         onPress={() => removeSecondary(code)}
                       >
-                        <Ionicons name="close-circle" size={20} color="#F44336" />
+                        <Ionicons name="close-circle" size={20} color={theme.error} />
                       </TouchableOpacity>
                     </View>
                   );
@@ -281,14 +292,14 @@ function OnboardingScreen() {
         {/* Step 2: Preferences */}
         {step === 2 && (
           <View style={styles.stepContainer}>
-            <Ionicons name="settings-outline" size={56} color="#FF9800" style={{ marginBottom: SPACING.md }} />
+            <Ionicons name="settings-outline" size={56} color={theme.warning} style={{ marginBottom: SPACING.md }} />
             <Text style={[styles.title, { color: theme.text.primary }]}>Set Your Preferences</Text>
             <Text style={[styles.subtitle, { color: theme.text.secondary }]}>Customize how you view your data</Text>
 
             {/* Theme Selection */}
             <Text style={[styles.sectionLabel, { color: theme.text.primary }]}>Theme</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.themeScroll}>
-              {THEME_OPTIONS.slice(0, -1).map((themeOpt) => (
+              {THEME_OPTIONS.map((themeOpt) => (
                 <TouchableOpacity
                   key={themeOpt.mode}
                   style={[
@@ -344,7 +355,7 @@ function OnboardingScreen() {
                   <Text style={[
                     styles.weekBtnText,
                     { color: theme.text.secondary },
-                    selectedWeekStart === day && styles.weekBtnTextActive,
+                    selectedWeekStart === day && { color: '#fff' },
                   ]}>
                     {day.charAt(0).toUpperCase() + day.slice(1)}
                   </Text>
@@ -357,38 +368,38 @@ function OnboardingScreen() {
         {/* Step 3: Education */}
         {step === 3 && (
           <View style={styles.stepContainer}>
-            <Ionicons name="checkmark-circle-outline" size={56} color="#4CAF50" style={{ marginBottom: SPACING.md }} />
-            <Text style={styles.title}>You're All Set!</Text>
-            <Text style={styles.subtitle}>Here's what you can do</Text>
+            <Ionicons name="checkmark-circle-outline" size={56} color={theme.success} style={{ marginBottom: SPACING.md }} />
+            <Text style={[styles.title, { color: theme.text.primary }]}>You're All Set!</Text>
+            <Text style={[styles.subtitle, { color: theme.text.secondary }]}>Here's what you can do</Text>
 
             <Card style={styles.featureCard}>
-              <Ionicons name="wallet-outline" size={32} color="#2196F3" style={{ marginBottom: SPACING.sm }} />
-              <Text style={styles.featureTitle}>Track Expenses & Income</Text>
-              <Text style={styles.featureDesc}>
+              <Ionicons name="wallet-outline" size={32} color={theme.primary} style={{ marginBottom: SPACING.sm }} />
+              <Text style={[styles.featureTitle, { color: theme.text.primary }]}>Track Expenses & Income</Text>
+              <Text style={[styles.featureDesc, { color: theme.text.secondary }]}>
                 Quick-add with category shortcuts, multi-level categories, and recurring transactions.
               </Text>
             </Card>
 
             <Card style={styles.featureCard}>
-              <Ionicons name="stats-chart-outline" size={32} color="#4CAF50" style={{ marginBottom: SPACING.sm }} />
-              <Text style={styles.featureTitle}>View Statistics</Text>
-              <Text style={styles.featureDesc}>
+              <Ionicons name="stats-chart-outline" size={32} color={theme.success} style={{ marginBottom: SPACING.sm }} />
+              <Text style={[styles.featureTitle, { color: theme.text.primary }]}>View Statistics</Text>
+              <Text style={[styles.featureDesc, { color: theme.text.secondary }]}>
                 Pie charts with drill-down, bar charts, and line charts for your balance over time.
               </Text>
             </Card>
 
             <Card style={styles.featureCard}>
-              <Ionicons name="folder-open-outline" size={32} color="#FF9800" style={{ marginBottom: SPACING.sm }} />
-              <Text style={styles.featureTitle}>Custom Categories</Text>
-              <Text style={styles.featureDesc}>
+              <Ionicons name="folder-open-outline" size={32} color={theme.warning} style={{ marginBottom: SPACING.sm }} />
+              <Text style={[styles.featureTitle, { color: theme.text.primary }]}>Custom Categories</Text>
+              <Text style={[styles.featureDesc, { color: theme.text.secondary }]}>
                 Up to 3 levels of categories, fully customizable with icons.
               </Text>
             </Card>
 
             <Card style={styles.featureCard}>
-              <Ionicons name="swap-horizontal-outline" size={32} color="#9C27B0" style={{ marginBottom: SPACING.sm }} />
-              <Text style={styles.featureTitle}>Multi-Currency</Text>
-              <Text style={styles.featureDesc}>
+              <Ionicons name="swap-horizontal-outline" size={32} color={theme.chartColors[3]} style={{ marginBottom: SPACING.sm }} />
+              <Text style={[styles.featureTitle, { color: theme.text.primary }]}>Multi-Currency</Text>
+              <Text style={[styles.featureDesc, { color: theme.text.secondary }]}>
                 Track in any currency with automatic FX conversion for statistics.
               </Text>
             </Card>
@@ -397,7 +408,15 @@ function OnboardingScreen() {
       </ScrollView>
 
       {/* Floating Navigation buttons */}
-      <View style={[styles.floatingNavContainer, { paddingBottom: Math.max(insets.bottom, SPACING.md) }]}>
+      <View style={[
+        styles.floatingNavContainer,
+        {
+          paddingBottom: Math.max(insets.bottom, SPACING.md),
+          backgroundColor: theme.cardBackground,
+          borderTopColor: theme.divider,
+          shadowColor: theme.shadow,
+        },
+      ]}>
         <View style={styles.navRow}>
           {step > 0 && (
             <Button
@@ -420,20 +439,24 @@ function OnboardingScreen() {
 
       {/* Main currency picker modal */}
       <Modal visible={showCurrencyDropdown} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+        <View style={[styles.modalOverlay, { backgroundColor: theme.overlay }]}>
+          <View style={[styles.modalContent, { backgroundColor: theme.cardBackground }]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Main Currency</Text>
+              <Text style={[styles.modalTitle, { color: theme.text.primary }]}>Select Main Currency</Text>
               <TouchableOpacity onPress={() => setShowCurrencyDropdown(false)}>
-                <Ionicons name="close" size={24} color="#666" />
+                <Ionicons name="close" size={24} color={theme.text.secondary} />
               </TouchableOpacity>
             </View>
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, {
+                borderColor: theme.border,
+                backgroundColor: theme.background,
+                color: theme.text.primary,
+              }]}
               placeholder="Search currencies..."
               value={currencySearch}
               onChangeText={setCurrencySearch}
-              placeholderTextColor="#999"
+              placeholderTextColor={theme.text.tertiary}
               autoFocus
             />
             <FlatList
@@ -443,19 +466,23 @@ function OnboardingScreen() {
                 const isSelected = selectedCurrency === item.code;
                 return (
                   <TouchableOpacity
-                    style={[styles.pickerRow, isSelected && styles.pickerRowSelected]}
+                    style={[
+                      styles.pickerRow,
+                      { borderBottomColor: theme.divider },
+                      isSelected && { backgroundColor: `${theme.primary}15` },
+                    ]}
                     onPress={() => {
                       setSelectedCurrency(item.code);
                       setSecondaryCurrencies((prev) => prev.filter((c) => c !== item.code));
                       setShowCurrencyDropdown(false);
                     }}
                   >
-                    <Text style={styles.pickerSymbol}>{item.symbol}</Text>
+                    <Text style={[styles.pickerSymbol, { color: theme.text.primary }]}>{item.symbol}</Text>
                     <View style={styles.pickerInfo}>
-                      <Text style={styles.pickerCode}>{item.code}</Text>
-                      <Text style={styles.pickerName}>{item.name}</Text>
+                      <Text style={[styles.pickerCode, { color: theme.text.primary }]}>{item.code}</Text>
+                      <Text style={[styles.pickerName, { color: theme.text.tertiary }]}>{item.name}</Text>
                     </View>
-                    {isSelected && <Ionicons name="checkmark-circle" size={22} color="#2196F3" />}
+                    {isSelected && <Ionicons name="checkmark-circle" size={22} color={theme.primary} />}
                   </TouchableOpacity>
                 );
               }}
@@ -467,20 +494,24 @@ function OnboardingScreen() {
 
       {/* Secondary currency picker modal */}
       <Modal visible={showSecondaryPicker} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+        <View style={[styles.modalOverlay, { backgroundColor: theme.overlay }]}>
+          <View style={[styles.modalContent, { backgroundColor: theme.cardBackground }]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Add Secondary Currencies</Text>
+              <Text style={[styles.modalTitle, { color: theme.text.primary }]}>Add Secondary Currencies</Text>
               <TouchableOpacity onPress={() => setShowSecondaryPicker(false)}>
-                <Ionicons name="close" size={24} color="#666" />
+                <Ionicons name="close" size={24} color={theme.text.secondary} />
               </TouchableOpacity>
             </View>
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, {
+                borderColor: theme.border,
+                backgroundColor: theme.background,
+                color: theme.text.primary,
+              }]}
               placeholder="Search currencies..."
               value={currencySearch}
               onChangeText={setCurrencySearch}
-              placeholderTextColor="#999"
+              placeholderTextColor={theme.text.tertiary}
               autoFocus
             />
             <FlatList
@@ -490,18 +521,22 @@ function OnboardingScreen() {
                 const isChecked = secondaryCurrencies.includes(item.code);
                 return (
                   <TouchableOpacity
-                    style={[styles.pickerRow, isChecked && styles.pickerRowChecked]}
+                    style={[
+                      styles.pickerRow,
+                      { borderBottomColor: theme.divider },
+                      isChecked && { backgroundColor: `${theme.primary}08` },
+                    ]}
                     onPress={() => toggleSecondary(item.code)}
                   >
-                    <Text style={styles.pickerSymbol}>{item.symbol}</Text>
+                    <Text style={[styles.pickerSymbol, { color: theme.text.primary }]}>{item.symbol}</Text>
                     <View style={styles.pickerInfo}>
-                      <Text style={styles.pickerCode}>{item.code}</Text>
-                      <Text style={styles.pickerName}>{item.name}</Text>
+                      <Text style={[styles.pickerCode, { color: theme.text.primary }]}>{item.code}</Text>
+                      <Text style={[styles.pickerName, { color: theme.text.tertiary }]}>{item.name}</Text>
                     </View>
                     <Ionicons
                       name={isChecked ? 'checkbox' : 'square-outline'}
                       size={22}
-                      color={isChecked ? '#2196F3' : '#ccc'}
+                      color={isChecked ? theme.primary : theme.text.tertiary}
                     />
                   </TouchableOpacity>
                 );
@@ -538,34 +573,28 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#ddd',
   },
-  dotActive: { backgroundColor: '#2196F3', width: 24 },
   stepContainer: { alignItems: 'center' },
   title: {
     fontSize: FONT_SIZE.xxl,
     fontWeight: '800',
-    color: '#222',
     textAlign: 'center',
     marginBottom: SPACING.sm,
   },
   subtitle: {
     fontSize: FONT_SIZE.md,
-    color: '#666',
     textAlign: 'center',
     marginBottom: SPACING.xl,
   },
   sectionLabel: {
     fontSize: FONT_SIZE.md,
     fontWeight: '700',
-    color: '#333',
     alignSelf: 'flex-start',
     marginBottom: SPACING.sm,
     marginTop: SPACING.md,
   },
   sectionHint: {
     fontSize: FONT_SIZE.xs,
-    color: '#888',
     alignSelf: 'flex-start',
     marginBottom: SPACING.md,
   },
@@ -577,23 +606,18 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.md,
     paddingHorizontal: SPACING.lg,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
   },
-  optionRowActive: { backgroundColor: '#E3F2FD' },
-  optionText: { fontSize: FONT_SIZE.md, color: '#222' },
-  check: { fontSize: FONT_SIZE.lg, color: '#2196F3', fontWeight: '700' },
+  optionText: { fontSize: FONT_SIZE.md },
   // Currency dropdown (matches currency-tags page)
   currencyDropdown: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     width: '100%',
-    backgroundColor: '#fff',
     borderRadius: BORDER_RADIUS.md,
     paddingVertical: SPACING.md,
     paddingHorizontal: SPACING.md,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
   },
   currencyDropdownContent: {
     flexDirection: 'row',
@@ -603,28 +627,21 @@ const styles = StyleSheet.create({
   currencyDropdownSymbol: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#333',
     width: 32,
     textAlign: 'center',
   },
-  currencyDropdownCode: { fontSize: FONT_SIZE.md, fontWeight: '700', color: '#222' },
-  currencyDropdownName: { fontSize: FONT_SIZE.xs, color: '#888' },
-  addCurrencyText: { fontSize: FONT_SIZE.sm, fontWeight: '600', color: '#2196F3' },
+  currencyDropdownCode: { fontSize: FONT_SIZE.md, fontWeight: '700' },
+  currencyDropdownName: { fontSize: FONT_SIZE.xs },
+  addCurrencyText: { fontSize: FONT_SIZE.sm, fontWeight: '600' },
   // Currency order items (matches currency-tags page)
   orderItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
     borderRadius: BORDER_RADIUS.md,
     paddingVertical: SPACING.sm,
     paddingHorizontal: SPACING.sm,
     marginBottom: SPACING.xs,
     borderWidth: 1,
-    borderColor: '#f0f0f0',
-  },
-  orderItemMain: {
-    borderColor: '#BBDEFB',
-    backgroundColor: '#F5F9FF',
   },
   orderArrows: {
     flexDirection: 'column',
@@ -641,7 +658,6 @@ const styles = StyleSheet.create({
   orderSymbol: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#333',
     width: 32,
     textAlign: 'center',
   },
@@ -649,15 +665,14 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: SPACING.xs,
   },
-  orderCode: { fontSize: FONT_SIZE.md, fontWeight: '700', color: '#222' },
-  orderName: { fontSize: FONT_SIZE.xs, color: '#888' },
+  orderCode: { fontSize: FONT_SIZE.md, fontWeight: '700' },
+  orderName: { fontSize: FONT_SIZE.xs },
   defaultBadge: {
-    backgroundColor: '#E3F2FD',
     paddingVertical: 2,
     paddingHorizontal: SPACING.sm,
     borderRadius: BORDER_RADIUS.sm,
   },
-  defaultBadgeText: { fontSize: FONT_SIZE.xs, color: '#1565C0', fontWeight: '700' },
+  defaultBadgeText: { fontSize: FONT_SIZE.xs, fontWeight: '700' },
   removeBtn: {
     padding: SPACING.xs,
   },
@@ -678,9 +693,6 @@ const styles = StyleSheet.create({
   weekBtnText: {
     fontSize: FONT_SIZE.md,
     fontWeight: '600',
-  },
-  weekBtnTextActive: {
-    color: '#fff',
   },
   // Theme cards
   themeScroll: {
@@ -709,20 +721,16 @@ const styles = StyleSheet.create({
   },
   // Education
   featureCard: { width: '100%', marginBottom: SPACING.md, alignItems: 'center' },
-  featureTitle: { fontSize: FONT_SIZE.md, fontWeight: '700', color: '#222', marginBottom: SPACING.xs },
-  featureDesc: { fontSize: FONT_SIZE.sm, color: '#666', textAlign: 'center', lineHeight: 20 },
+  featureTitle: { fontSize: FONT_SIZE.md, fontWeight: '700', marginBottom: SPACING.xs },
+  featureDesc: { fontSize: FONT_SIZE.sm, textAlign: 'center', lineHeight: 20 },
   floatingNavContainer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#fff',
     paddingHorizontal: SPACING.lg,
     paddingTop: SPACING.md,
-    // paddingBottom is set dynamically with safe area insets
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
@@ -735,11 +743,9 @@ const styles = StyleSheet.create({
   // Modal (bottom sheet style — matches currency-tags page)
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#fff',
     borderTopLeftRadius: BORDER_RADIUS.lg,
     borderTopRightRadius: BORDER_RADIUS.lg,
     maxHeight: '80%',
@@ -756,18 +762,15 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: FONT_SIZE.lg,
     fontWeight: '700',
-    color: '#222',
   },
   searchInput: {
     borderWidth: 1,
-    borderColor: '#e0e0e0',
     borderRadius: BORDER_RADIUS.md,
     paddingVertical: SPACING.sm,
     paddingHorizontal: SPACING.md,
     fontSize: FONT_SIZE.md,
     marginHorizontal: SPACING.lg,
     marginBottom: SPACING.sm,
-    backgroundColor: '#fafafa',
   },
   pickerRow: {
     flexDirection: 'row',
@@ -775,14 +778,10 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.sm,
     paddingHorizontal: SPACING.lg,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#f0f0f0',
   },
-  pickerRowSelected: { backgroundColor: '#E3F2FD' },
-  pickerRowChecked: { backgroundColor: '#F5F9FF' },
   pickerSymbol: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#333',
     width: 36,
     textAlign: 'center',
   },
@@ -790,6 +789,6 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: SPACING.sm,
   },
-  pickerCode: { fontSize: FONT_SIZE.md, fontWeight: '600', color: '#222' },
-  pickerName: { fontSize: FONT_SIZE.xs, color: '#888' },
+  pickerCode: { fontSize: FONT_SIZE.md, fontWeight: '600' },
+  pickerName: { fontSize: FONT_SIZE.xs },
 });

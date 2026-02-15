@@ -15,6 +15,7 @@ import { ScreenContainer } from '../src/components/ScreenContainer';
 import { ErrorBoundary } from '../src/components/ErrorBoundary';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSettings, useSaveSettings } from '../src/hooks/useSettings';
+import { useTheme } from '../src/hooks/useTheme';
 import { ALL_CURRENCIES, CurrencyInfo } from '../src/constants/currencies';
 import { SPACING, FONT_SIZE, BORDER_RADIUS } from '../src/constants/spacing';
 import { logger } from '../src/utils/logger';
@@ -26,6 +27,7 @@ function CurrencyTagsScreen() {
   const settings = useSettings();
   const saveMutation = useSaveSettings();
   const queryClient = useQueryClient();
+  const theme = useTheme();
 
   const [mainPickerVisible, setMainPickerVisible] = useState(false);
   const [secPickerVisible, setSecPickerVisible] = useState(false);
@@ -91,7 +93,11 @@ function CurrencyTagsScreen() {
 
   // ── Draggable render item ──────────────────────────────────────────────
   const renderDragItem = useCallback(({ item, drag, isActive }: RenderItemParams<CurrencyInfo>) => (
-    <View style={[styles.orderItem, isActive && styles.orderItemActive]}>
+    <View style={[
+      styles.orderItem,
+      { backgroundColor: theme.cardBackground, borderColor: theme.border },
+      isActive && { backgroundColor: `${theme.primary}15`, borderColor: theme.primary, elevation: 6 },
+    ]}>
       <TouchableOpacity
         onLongPress={drag}
         delayLongPress={150}
@@ -99,82 +105,82 @@ function CurrencyTagsScreen() {
         style={styles.dragHandle}
         activeOpacity={0.5}
       >
-        <Ionicons name="menu" size={18} color={isActive ? '#2196F3' : '#bbb'} />
+        <Ionicons name="menu" size={18} color={isActive ? theme.primary : theme.text.tertiary} />
       </TouchableOpacity>
-      <Text style={styles.orderSymbol}>{item.symbol}</Text>
+      <Text style={[styles.orderSymbol, { color: theme.text.primary }]}>{item.symbol}</Text>
       <View style={styles.orderInfo}>
-        <Text style={styles.orderCode}>{item.code}</Text>
-        <Text style={styles.orderName}>{item.name}</Text>
+        <Text style={[styles.orderCode, { color: theme.text.primary }]}>{item.code}</Text>
+        <Text style={[styles.orderName, { color: theme.text.tertiary }]}>{item.name}</Text>
       </View>
       <TouchableOpacity
         style={styles.removeBtn}
         onPress={() => removeSecondary(item.code)}
       >
-        <Ionicons name="close-circle" size={20} color="#F44336" />
+        <Ionicons name="close-circle" size={20} color={theme.error} />
       </TouchableOpacity>
     </View>
-  ), [removeSecondary]);
+  ), [removeSecondary, theme]);
 
   // ── Header content (sections 1, 2, 3-main) rendered above the draggable items ──
   const listHeader = (
     <>
       {/* ── Section 1: Main Currency ── */}
-      <Text style={styles.sectionLabel}>Main Currency</Text>
+      <Text style={[styles.sectionLabel, { color: theme.text.primary }]}>Main Currency</Text>
       <Pressable
-        style={styles.dropdown}
+        style={[styles.dropdown, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}
         onPress={() => { setSearch(''); setMainPickerVisible(true); }}
       >
         <View style={styles.dropdownContent}>
-          <Text style={styles.dropdownSymbol}>{mainInfo?.symbol ?? '?'}</Text>
+          <Text style={[styles.dropdownSymbol, { color: theme.text.primary }]}>{mainInfo?.symbol ?? '?'}</Text>
           <View>
-            <Text style={styles.dropdownCode}>{settings.mainCurrency}</Text>
-            <Text style={styles.dropdownName}>{mainInfo?.name ?? ''}</Text>
+            <Text style={[styles.dropdownCode, { color: theme.text.primary }]}>{settings.mainCurrency}</Text>
+            <Text style={[styles.dropdownName, { color: theme.text.tertiary }]}>{mainInfo?.name ?? ''}</Text>
           </View>
         </View>
-        <Ionicons name="chevron-down" size={20} color="#666" />
+        <Ionicons name="chevron-down" size={20} color={theme.text.secondary} />
       </Pressable>
 
       {/* ── Section 2: Secondary Currencies ── */}
-      <Text style={[styles.sectionLabel, { marginTop: SPACING.xl }]}>
+      <Text style={[styles.sectionLabel, { marginTop: SPACING.xl, color: theme.text.primary }]}>
         Secondary Currencies
       </Text>
-      <Text style={styles.sectionHint}>
+      <Text style={[styles.sectionHint, { color: theme.text.tertiary }]}>
         Optional. These appear as quick-switch tags in Add &amp; Statistics screens.
       </Text>
       <Pressable
-        style={styles.dropdown}
+        style={[styles.dropdown, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}
         onPress={() => { setSearch(''); setSecPickerVisible(true); }}
       >
         <View style={styles.dropdownContent}>
-          <Ionicons name="add-circle-outline" size={22} color="#2196F3" />
-          <Text style={styles.addBtnText}>
+          <Ionicons name="add-circle-outline" size={22} color={theme.primary} />
+          <Text style={[styles.addBtnText, { color: theme.primary }]}>
             {secondaryList.length > 0
               ? `${secondaryList.length} selected`
               : 'Add Currency'}
           </Text>
         </View>
-        <Ionicons name="chevron-down" size={20} color="#666" />
+        <Ionicons name="chevron-down" size={20} color={theme.text.secondary} />
       </Pressable>
 
       {/* ── Section 3 header: Currency Order ── */}
       {secondaryList.length > 0 && (
         <>
-          <Text style={[styles.sectionLabel, { marginTop: SPACING.lg }]}>Currency Order</Text>
-          <Text style={styles.sectionHint}>
+          <Text style={[styles.sectionLabel, { marginTop: SPACING.lg, color: theme.text.primary }]}>Currency Order</Text>
+          <Text style={[styles.sectionHint, { color: theme.text.tertiary }]}>
             Long press the ≡ handle to drag and reorder.
           </Text>
 
           {/* Main currency — fixed at top */}
           {mainInfo && (
-            <View style={[styles.orderItem, styles.orderItemMain]}>
+            <View style={[styles.orderItem, { backgroundColor: `${theme.primary}08`, borderColor: `${theme.primary}40` }]}>
               <View style={styles.dragHandlePlaceholder} />
-              <Text style={styles.orderSymbol}>{mainInfo.symbol}</Text>
+              <Text style={[styles.orderSymbol, { color: theme.text.primary }]}>{mainInfo.symbol}</Text>
               <View style={styles.orderInfo}>
-                <Text style={styles.orderCode}>{mainInfo.code}</Text>
-                <Text style={styles.orderName}>{mainInfo.name}</Text>
+                <Text style={[styles.orderCode, { color: theme.text.primary }]}>{mainInfo.code}</Text>
+                <Text style={[styles.orderName, { color: theme.text.tertiary }]}>{mainInfo.name}</Text>
               </View>
-              <View style={styles.defaultBadge}>
-                <Text style={styles.defaultBadgeText}>Default</Text>
+              <View style={[styles.defaultBadge, { backgroundColor: `${theme.primary}20` }]}>
+                <Text style={[styles.defaultBadgeText, { color: theme.primary }]}>Default</Text>
               </View>
             </View>
           )}
@@ -200,20 +206,24 @@ function CurrencyTagsScreen() {
 
       {/* ── Modal: Main Currency Picker ── */}
       <Modal visible={mainPickerVisible} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+        <View style={[styles.modalOverlay, { backgroundColor: theme.overlay }]}>
+          <View style={[styles.modalContent, { backgroundColor: theme.cardBackground }]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Main Currency</Text>
+              <Text style={[styles.modalTitle, { color: theme.text.primary }]}>Select Main Currency</Text>
               <Pressable onPress={() => setMainPickerVisible(false)}>
-                <Ionicons name="close" size={24} color="#666" />
+                <Ionicons name="close" size={24} color={theme.text.secondary} />
               </Pressable>
             </View>
             <TextInput
-              style={styles.modalSearch}
+              style={[styles.modalSearch, {
+                borderColor: theme.border,
+                backgroundColor: theme.background,
+                color: theme.text.primary,
+              }]}
               placeholder="Search currencies..."
               value={search}
               onChangeText={setSearch}
-              placeholderTextColor="#999"
+              placeholderTextColor={theme.text.tertiary}
               autoFocus
             />
             <FlatList
@@ -223,15 +233,19 @@ function CurrencyTagsScreen() {
                 const isSelected = item.code === settings.mainCurrency;
                 return (
                   <Pressable
-                    style={[styles.pickerRow, isSelected && styles.pickerRowSelected]}
+                    style={[
+                      styles.pickerRow,
+                      { borderBottomColor: theme.divider },
+                      isSelected && { backgroundColor: `${theme.primary}15` },
+                    ]}
                     onPress={() => selectMainCurrency(item.code)}
                   >
-                    <Text style={styles.pickerSymbol}>{item.symbol}</Text>
+                    <Text style={[styles.pickerSymbol, { color: theme.text.primary }]}>{item.symbol}</Text>
                     <View style={styles.pickerInfo}>
-                      <Text style={styles.pickerCode}>{item.code}</Text>
-                      <Text style={styles.pickerName}>{item.name}</Text>
+                      <Text style={[styles.pickerCode, { color: theme.text.primary }]}>{item.code}</Text>
+                      <Text style={[styles.pickerName, { color: theme.text.tertiary }]}>{item.name}</Text>
                     </View>
-                    {isSelected && <Ionicons name="checkmark-circle" size={22} color="#2196F3" />}
+                    {isSelected && <Ionicons name="checkmark-circle" size={22} color={theme.primary} />}
                   </Pressable>
                 );
               }}
@@ -243,20 +257,24 @@ function CurrencyTagsScreen() {
 
       {/* ── Modal: Secondary Currency Picker ── */}
       <Modal visible={secPickerVisible} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+        <View style={[styles.modalOverlay, { backgroundColor: theme.overlay }]}>
+          <View style={[styles.modalContent, { backgroundColor: theme.cardBackground }]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Add Secondary Currencies</Text>
+              <Text style={[styles.modalTitle, { color: theme.text.primary }]}>Add Secondary Currencies</Text>
               <Pressable onPress={() => setSecPickerVisible(false)}>
-                <Ionicons name="close" size={24} color="#666" />
+                <Ionicons name="close" size={24} color={theme.text.secondary} />
               </Pressable>
             </View>
             <TextInput
-              style={styles.modalSearch}
+              style={[styles.modalSearch, {
+                borderColor: theme.border,
+                backgroundColor: theme.background,
+                color: theme.text.primary,
+              }]}
               placeholder="Search currencies..."
               value={search}
               onChangeText={setSearch}
-              placeholderTextColor="#999"
+              placeholderTextColor={theme.text.tertiary}
               autoFocus
             />
             <FlatList
@@ -266,18 +284,22 @@ function CurrencyTagsScreen() {
                 const isChecked = settings.secondaryCurrencies.includes(item.code);
                 return (
                   <Pressable
-                    style={[styles.pickerRow, isChecked && styles.pickerRowChecked]}
+                    style={[
+                      styles.pickerRow,
+                      { borderBottomColor: theme.divider },
+                      isChecked && { backgroundColor: `${theme.primary}08` },
+                    ]}
                     onPress={() => toggleSecondary(item.code)}
                   >
-                    <Text style={styles.pickerSymbol}>{item.symbol}</Text>
+                    <Text style={[styles.pickerSymbol, { color: theme.text.primary }]}>{item.symbol}</Text>
                     <View style={styles.pickerInfo}>
-                      <Text style={styles.pickerCode}>{item.code}</Text>
-                      <Text style={styles.pickerName}>{item.name}</Text>
+                      <Text style={[styles.pickerCode, { color: theme.text.primary }]}>{item.code}</Text>
+                      <Text style={[styles.pickerName, { color: theme.text.tertiary }]}>{item.name}</Text>
                     </View>
                     <Ionicons
                       name={isChecked ? 'checkbox' : 'square-outline'}
                       size={22}
-                      color={isChecked ? '#2196F3' : '#ccc'}
+                      color={isChecked ? theme.primary : theme.text.tertiary}
                     />
                   </Pressable>
                 );
@@ -306,12 +328,10 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: FONT_SIZE.md,
     fontWeight: '700',
-    color: '#222',
     marginBottom: SPACING.xs,
   },
   sectionHint: {
     fontSize: FONT_SIZE.xs,
-    color: '#999',
     marginBottom: SPACING.sm,
   },
   // Dropdown (main currency)
@@ -319,12 +339,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#fff',
     borderRadius: BORDER_RADIUS.md,
     paddingVertical: SPACING.md,
     paddingHorizontal: SPACING.md,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
   },
   dropdownContent: {
     flexDirection: 'row',
@@ -334,41 +352,24 @@ const styles = StyleSheet.create({
   dropdownSymbol: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#333',
     width: 32,
     textAlign: 'center',
   },
-  dropdownCode: { fontSize: FONT_SIZE.md, fontWeight: '700', color: '#222' },
-  dropdownName: { fontSize: FONT_SIZE.xs, color: '#888' },
+  dropdownCode: { fontSize: FONT_SIZE.md, fontWeight: '700' },
+  dropdownName: { fontSize: FONT_SIZE.xs },
   addBtnText: {
     fontSize: FONT_SIZE.sm,
     fontWeight: '600',
-    color: '#2196F3',
   },
   // Order items
   orderItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
     borderRadius: BORDER_RADIUS.md,
     paddingVertical: SPACING.sm,
     paddingHorizontal: SPACING.sm,
     marginBottom: SPACING.xs,
     borderWidth: 1,
-    borderColor: '#f0f0f0',
-  },
-  orderItemMain: {
-    borderColor: '#BBDEFB',
-    backgroundColor: '#F5F9FF',
-  },
-  orderItemActive: {
-    backgroundColor: '#E3F2FD',
-    borderColor: '#90CAF9',
-    elevation: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
   },
   dragHandle: {
     paddingVertical: SPACING.xs,
@@ -382,7 +383,6 @@ const styles = StyleSheet.create({
   orderSymbol: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#333',
     width: 32,
     textAlign: 'center',
   },
@@ -390,26 +390,23 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: SPACING.xs,
   },
-  orderCode: { fontSize: FONT_SIZE.md, fontWeight: '700', color: '#222' },
-  orderName: { fontSize: FONT_SIZE.xs, color: '#888' },
+  orderCode: { fontSize: FONT_SIZE.md, fontWeight: '700' },
+  orderName: { fontSize: FONT_SIZE.xs },
   defaultBadge: {
-    backgroundColor: '#E3F2FD',
     paddingVertical: 2,
     paddingHorizontal: SPACING.sm,
     borderRadius: BORDER_RADIUS.sm,
   },
-  defaultBadgeText: { fontSize: FONT_SIZE.xs, color: '#1565C0', fontWeight: '700' },
+  defaultBadgeText: { fontSize: FONT_SIZE.xs, fontWeight: '700' },
   removeBtn: {
     padding: SPACING.xs,
   },
   // Modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#fff',
     borderTopLeftRadius: BORDER_RADIUS.lg,
     borderTopRightRadius: BORDER_RADIUS.lg,
     maxHeight: '80%',
@@ -426,18 +423,15 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: FONT_SIZE.lg,
     fontWeight: '700',
-    color: '#222',
   },
   modalSearch: {
     borderWidth: 1,
-    borderColor: '#e0e0e0',
     borderRadius: BORDER_RADIUS.md,
     paddingVertical: SPACING.sm,
     paddingHorizontal: SPACING.md,
     fontSize: FONT_SIZE.md,
     marginHorizontal: SPACING.lg,
     marginBottom: SPACING.sm,
-    backgroundColor: '#fafafa',
   },
   pickerRow: {
     flexDirection: 'row',
@@ -445,18 +439,10 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.sm,
     paddingHorizontal: SPACING.lg,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#f0f0f0',
-  },
-  pickerRowSelected: {
-    backgroundColor: '#E3F2FD',
-  },
-  pickerRowChecked: {
-    backgroundColor: '#F5F9FF',
   },
   pickerSymbol: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#333',
     width: 36,
     textAlign: 'center',
   },
@@ -464,6 +450,6 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: SPACING.sm,
   },
-  pickerCode: { fontSize: FONT_SIZE.md, fontWeight: '600', color: '#222' },
-  pickerName: { fontSize: FONT_SIZE.xs, color: '#888' },
+  pickerCode: { fontSize: FONT_SIZE.md, fontWeight: '600' },
+  pickerName: { fontSize: FONT_SIZE.xs },
 });

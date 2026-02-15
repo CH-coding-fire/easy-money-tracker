@@ -14,6 +14,7 @@ import { ScreenContainer } from '../../src/components/ScreenContainer';
 import { Card } from '../../src/components/Card';
 import { ErrorBoundary } from '../../src/components/ErrorBoundary';
 import { useTransactions, useDeleteTransaction } from '../../src/hooks/useTransactions';
+import { useTheme } from '../../src/hooks/useTheme';
 import { Transaction } from '../../src/types';
 import { SPACING, FONT_SIZE, BORDER_RADIUS } from '../../src/constants/spacing';
 import { logger } from '../../src/utils/logger';
@@ -22,6 +23,7 @@ const TAG = 'EditRecordsScreen';
 
 function EditRecordsScreen() {
   const router = useRouter();
+  const theme = useTheme();
   const transactions = useTransactions();
   const deleteMutation = useDeleteTransaction();
   const [search, setSearch] = useState('');
@@ -85,33 +87,33 @@ function EditRecordsScreen() {
         <View style={styles.txRow}>
           <View style={styles.txInfo}>
             <View style={styles.txHeader}>
-              <Text style={[styles.txAmount, { color: isExpense ? '#F44336' : '#4CAF50' }]}>
+              <Text style={[styles.txAmount, { color: isExpense ? theme.error : theme.success }]}>
                 {isExpense ? '-' : '+'}{item.currency} {item.amount.toFixed(2)}
               </Text>
-              <Text style={styles.txDate}>{item.date}</Text>
+              <Text style={[styles.txDate, { color: theme.text.tertiary }]}>{item.date}</Text>
             </View>
-            <Text style={styles.txCategory} numberOfLines={1}>
+            <Text style={[styles.txCategory, { color: theme.text.secondary }]} numberOfLines={1}>
               {item.categoryPath.join(' > ')}
             </Text>
             {item.title && (
-              <Text style={styles.txTitle} numberOfLines={1}>{item.title}</Text>
+              <Text style={[styles.txTitle, { color: theme.text.primary }]} numberOfLines={1}>{item.title}</Text>
             )}
             {item.description && (
-              <Text style={styles.txDesc} numberOfLines={2}>{item.description}</Text>
+              <Text style={[styles.txDesc, { color: theme.text.tertiary }]} numberOfLines={2}>{item.description}</Text>
             )}
             {item.isRecurring && (
               <View style={styles.txRecurringRow}>
-                <Ionicons name="repeat" size={14} color="#FF9800" />
-                <Text style={styles.txRecurring}> Recurring</Text>
+                <Ionicons name="repeat" size={14} color={theme.warning} />
+                <Text style={[styles.txRecurring, { color: theme.warning }]}> Multi-times</Text>
               </View>
             )}
           </View>
           <View style={styles.txActions}>
             <TouchableOpacity style={styles.editBtn} onPress={() => handleEdit(item)}>
-              <Ionicons name="create-outline" size={20} color="#666" />
+              <Ionicons name="create-outline" size={20} color={theme.text.secondary} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(item)}>
-              <Ionicons name="trash-outline" size={20} color="#F44336" />
+              <Ionicons name="trash-outline" size={20} color={theme.error} />
             </TouchableOpacity>
           </View>
         </View>
@@ -121,31 +123,46 @@ function EditRecordsScreen() {
 
   return (
     <ScreenContainer padBottom={false}>
-      <Text style={styles.screenTitle}>Records</Text>
+      <Text style={[styles.screenTitle, { color: theme.text.primary }]}>Records</Text>
 
       {/* Search bar */}
       <TextInput
-        style={styles.searchInput}
+        style={[styles.searchInput, {
+          borderColor: theme.border,
+          backgroundColor: theme.cardBackground,
+          color: theme.text.primary,
+        }]}
         placeholder="Search by title, category, amount, date..."
         value={search}
         onChangeText={setSearch}
-        placeholderTextColor="#999"
+        placeholderTextColor={theme.text.tertiary}
       />
 
       {/* Type filter */}
       <View style={styles.filterRow}>
-        {(['all', 'expense', 'income'] as const).map((type) => (
-          <TouchableOpacity
-            key={type}
-            style={[styles.filterChip, filterType === type && styles.filterChipActive]}
-            onPress={() => setFilterType(type)}
-          >
-            <Text style={[styles.filterText, filterType === type && styles.filterTextActive]}>
-              {type === 'all' ? 'All' : type === 'expense' ? 'Expense' : 'Income'}
-            </Text>
-          </TouchableOpacity>
-        ))}
-        <Text style={styles.countText}>{filtered.length} records</Text>
+        {(['all', 'expense', 'income'] as const).map((type) => {
+          const isActive = filterType === type;
+          return (
+            <TouchableOpacity
+              key={type}
+              style={[
+                styles.filterChip,
+                { backgroundColor: `${theme.primary}15` },
+                isActive && { backgroundColor: theme.primary },
+              ]}
+              onPress={() => setFilterType(type)}
+            >
+              <Text style={[
+                styles.filterText,
+                { color: theme.primary },
+                isActive && { color: '#fff' },
+              ]}>
+                {type === 'all' ? 'All' : type === 'expense' ? 'Expense' : 'Income'}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+        <Text style={[styles.countText, { color: theme.text.tertiary }]}>{filtered.length} records</Text>
       </View>
 
       {/* Records list */}
@@ -156,12 +173,12 @@ function EditRecordsScreen() {
         contentContainerStyle={styles.list}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Ionicons name="document-text-outline" size={48} color="#ccc" style={{ marginBottom: SPACING.md }} />
-            <Text style={styles.emptyText}>
+            <Ionicons name="document-text-outline" size={48} color={theme.border} style={{ marginBottom: SPACING.md }} />
+            <Text style={[styles.emptyText, { color: theme.text.secondary }]}>
               {search ? 'No records match your search' : 'No records yet'}
             </Text>
             {!search && (
-              <Text style={styles.emptyHint}>Add a transaction to get started</Text>
+              <Text style={[styles.emptyHint, { color: theme.text.tertiary }]}>Add a transaction to get started</Text>
             )}
           </View>
         }
@@ -182,18 +199,15 @@ const styles = StyleSheet.create({
   screenTitle: {
     fontSize: FONT_SIZE.xxl,
     fontWeight: '800',
-    color: '#222',
     marginBottom: SPACING.md,
     marginTop: SPACING.sm,
   },
   searchInput: {
     borderWidth: 1,
-    borderColor: '#ddd',
     borderRadius: BORDER_RADIUS.md,
     paddingVertical: SPACING.sm,
     paddingHorizontal: SPACING.md,
     fontSize: FONT_SIZE.md,
-    backgroundColor: '#fff',
     marginBottom: SPACING.sm,
   },
   filterRow: {
@@ -206,14 +220,10 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.xs,
     paddingHorizontal: SPACING.md,
     borderRadius: BORDER_RADIUS.sm,
-    backgroundColor: '#E0E0E0',
   },
-  filterChipActive: { backgroundColor: '#2196F3' },
-  filterText: { fontSize: FONT_SIZE.xs, color: '#555', fontWeight: '600' },
-  filterTextActive: { color: '#fff' },
+  filterText: { fontSize: FONT_SIZE.xs, fontWeight: '600' },
   countText: {
     fontSize: FONT_SIZE.xs,
-    color: '#999',
     marginLeft: 'auto',
   },
   list: { paddingBottom: SPACING.xxxl },
@@ -229,12 +239,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   txAmount: { fontSize: FONT_SIZE.lg, fontWeight: '800' },
-  txDate: { fontSize: FONT_SIZE.xs, color: '#999' },
-  txCategory: { fontSize: FONT_SIZE.sm, color: '#666', marginTop: 2 },
-  txTitle: { fontSize: FONT_SIZE.md, color: '#222', fontWeight: '700', marginTop: SPACING.xs },
-  txDesc: { fontSize: FONT_SIZE.xs, color: '#888', marginTop: 2 },
+  txDate: { fontSize: FONT_SIZE.xs },
+  txCategory: { fontSize: FONT_SIZE.sm, marginTop: 2 },
+  txTitle: { fontSize: FONT_SIZE.md, fontWeight: '700', marginTop: SPACING.xs },
+  txDesc: { fontSize: FONT_SIZE.xs, marginTop: 2 },
   txRecurringRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
-  txRecurring: { fontSize: FONT_SIZE.xs, color: '#FF9800' },
+  txRecurring: { fontSize: FONT_SIZE.xs },
   txActions: { 
     flexDirection: 'row',
     marginLeft: SPACING.md, 
@@ -243,6 +253,6 @@ const styles = StyleSheet.create({
   editBtn: { padding: SPACING.xs },
   deleteBtn: { padding: SPACING.xs },
   empty: { alignItems: 'center', paddingVertical: SPACING.xxxl },
-  emptyText: { fontSize: FONT_SIZE.lg, color: '#666', fontWeight: '600' },
-  emptyHint: { fontSize: FONT_SIZE.sm, color: '#999', marginTop: SPACING.xs },
+  emptyText: { fontSize: FONT_SIZE.lg, fontWeight: '600' },
+  emptyHint: { fontSize: FONT_SIZE.sm, marginTop: SPACING.xs },
 });

@@ -13,6 +13,7 @@ import { SegmentedControl } from '../src/components/SegmentedControl';
 import { ErrorBoundary } from '../src/components/ErrorBoundary';
 import { useCategories } from '../src/hooks/useCategories';
 import { useSettings, useSaveSettings } from '../src/hooks/useSettings';
+import { useTheme } from '../src/hooks/useTheme';
 import { Category, TransactionType } from '../src/types';
 import { SPACING, FONT_SIZE, BORDER_RADIUS } from '../src/constants/spacing';
 import { logger } from '../src/utils/logger';
@@ -50,6 +51,7 @@ function FrequentCategoriesScreen() {
   const settings = useSettings();
   const saveMutation = useSaveSettings();
   const { showToast } = useUIStore();
+  const theme = useTheme();
 
   const [catType, setCatType] = useState<TransactionType>('expense');
 
@@ -120,7 +122,7 @@ function FrequentCategoriesScreen() {
   return (
     <ScreenContainer padTop={false}>
       {/* Fixed header: Type toggle */}
-      <View style={styles.header}>
+      <View style={[styles.header, { borderBottomColor: theme.divider, backgroundColor: theme.background }]}>
         <SegmentedControl<TransactionType>
           options={[
             { label: 'Expense', value: 'expense' },
@@ -131,19 +133,19 @@ function FrequentCategoriesScreen() {
         />
 
         {/* Selected frequent categories */}
-        <Text style={styles.sectionLabel}>
+        <Text style={[styles.sectionLabel, { color: theme.text.primary }]}>
           Frequent Categories
         </Text>
-        <Text style={styles.sectionHint}>
+        <Text style={[styles.sectionHint, { color: theme.text.tertiary }]}>
           These appear as quick-pick tags in the Add screen.
         </Text>
 
         {frequentList.length > 0 ? (
           <View style={styles.chipRow}>
             {frequentList.map((path) => (
-              <View key={pathKey(path)} style={styles.chip}>
+              <View key={pathKey(path)} style={[styles.chip, { backgroundColor: `${theme.primary}20` }]}>
                 <Text style={styles.chipIcon}>{findIcon(path)}</Text>
-                <Text style={styles.chipLabel} numberOfLines={1}>
+                <Text style={[styles.chipLabel, { color: theme.primary }]} numberOfLines={1}>
                   {path[path.length - 1]}
                 </Text>
                 <TouchableOpacity
@@ -151,24 +153,24 @@ function FrequentCategoriesScreen() {
                   onPress={() => removeFrequent(path)}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Ionicons name="close-circle" size={16} color="#F44336" />
+                  <Ionicons name="close-circle" size={16} color={theme.error} />
                 </TouchableOpacity>
               </View>
             ))}
           </View>
         ) : (
-          <View style={styles.emptyChips}>
-            <Text style={styles.emptyChipsText}>
+          <View style={[styles.emptyChips, { backgroundColor: theme.background, borderColor: theme.border }]}>
+            <Text style={[styles.emptyChipsText, { color: theme.text.tertiary }]}>
               No frequent categories yet. Tap categories below to add them.
             </Text>
           </View>
         )}
 
         {/* All categories header */}
-        <Text style={[styles.sectionLabel, { marginTop: SPACING.md }]}>
+        <Text style={[styles.sectionLabel, { marginTop: SPACING.md, color: theme.text.primary }]}>
           All Categories
         </Text>
-        <Text style={styles.sectionHint}>
+        <Text style={[styles.sectionHint, { color: theme.text.tertiary }]}>
           Tap to toggle as frequent. Shows full path for subcategories.
         </Text>
       </View>
@@ -185,7 +187,8 @@ function FrequentCategoriesScreen() {
             <TouchableOpacity
               style={[
                 styles.catRow,
-                selected && styles.catRowSelected,
+                { backgroundColor: theme.cardBackground },
+                selected && { backgroundColor: `${theme.primary}08` },
                 { paddingLeft: SPACING.md + depth * 20 },
               ]}
               onPress={() => toggleFrequent(item.path)}
@@ -194,7 +197,11 @@ function FrequentCategoriesScreen() {
               <Text style={styles.catIcon}>{item.icon}</Text>
               <View style={styles.catInfo}>
                 <Text
-                  style={[styles.catName, selected && styles.catNameSelected]}
+                  style={[
+                    styles.catName,
+                    { color: theme.text.primary },
+                    selected && { fontWeight: '700', color: theme.primary },
+                  ]}
                   numberOfLines={1}
                 >
                   {item.path.length > 1 ? item.path.join(' > ') : item.path[0]}
@@ -203,12 +210,12 @@ function FrequentCategoriesScreen() {
               <Ionicons
                 name={selected ? 'checkmark-circle' : 'add-circle-outline'}
                 size={22}
-                color={selected ? '#2196F3' : '#ccc'}
+                color={selected ? theme.primary : theme.text.tertiary}
               />
             </TouchableOpacity>
           );
         }}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
+        ItemSeparatorComponent={() => <View style={[styles.separator, { backgroundColor: theme.divider }]} />}
       />
     </ScreenContainer>
   );
@@ -227,8 +234,6 @@ const styles = StyleSheet.create({
     paddingTop: SPACING.sm,
     paddingBottom: SPACING.sm,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-    backgroundColor: '#fff',
   },
   listContent: {
     paddingBottom: SPACING.lg,
@@ -236,13 +241,11 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: FONT_SIZE.md,
     fontWeight: '700',
-    color: '#222',
     marginBottom: SPACING.xs,
     marginTop: SPACING.sm,
   },
   sectionHint: {
     fontSize: FONT_SIZE.xs,
-    color: '#999',
     marginBottom: SPACING.sm,
   },
   // ── Chips (selected frequent) ──
@@ -255,7 +258,6 @@ const styles = StyleSheet.create({
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#E3F2FD',
     borderRadius: BORDER_RADIUS.sm,
     paddingVertical: SPACING.xs,
     paddingLeft: SPACING.sm,
@@ -268,7 +270,6 @@ const styles = StyleSheet.create({
   chipLabel: {
     fontSize: FONT_SIZE.xs,
     fontWeight: '600',
-    color: '#1565C0',
     maxWidth: 120,
   },
   chipRemove: {
@@ -277,15 +278,12 @@ const styles = StyleSheet.create({
   emptyChips: {
     paddingVertical: SPACING.md,
     paddingHorizontal: SPACING.md,
-    backgroundColor: '#fafafa',
     borderRadius: BORDER_RADIUS.md,
     borderWidth: 1,
-    borderColor: '#f0f0f0',
     marginBottom: SPACING.sm,
   },
   emptyChipsText: {
     fontSize: FONT_SIZE.sm,
-    color: '#999',
     textAlign: 'center',
   },
   // ── Category list ──
@@ -294,10 +292,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: SPACING.sm,
     paddingHorizontal: SPACING.md,
-    backgroundColor: '#fff',
-  },
-  catRowSelected: {
-    backgroundColor: '#F5F9FF',
   },
   catIcon: {
     fontSize: 20,
@@ -308,15 +302,9 @@ const styles = StyleSheet.create({
   },
   catName: {
     fontSize: FONT_SIZE.md,
-    color: '#222',
-  },
-  catNameSelected: {
-    fontWeight: '700',
-    color: '#1565C0',
   },
   separator: {
     height: 1,
-    backgroundColor: '#f0f0f0',
     marginLeft: 48,
   },
 });

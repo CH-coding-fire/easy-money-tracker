@@ -50,14 +50,7 @@ export interface FxCache {
 
 // ── Theme ──────────────────────────────────────────────────────────────────
 
-export type ThemeMode = 
-  | 'light' 
-  | 'dark' 
-  | 'amoled' 
-  | 'high_contrast' 
-  | 'pastel' 
-  | 'finance' 
-  | 'auto';
+export type ThemeMode = 'light' | 'dark' | 'pastel';
 
 export interface Theme {
   // Background colors

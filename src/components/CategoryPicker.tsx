@@ -12,6 +12,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Category } from '../types';
 import { SPACING, BORDER_RADIUS, FONT_SIZE } from '../constants/spacing';
 import { Button } from './Button';
+import { useTheme } from '../hooks/useTheme';
 
 interface CategoryPickerProps {
   categories: Category[];
@@ -30,6 +31,7 @@ export function CategoryPicker({
   onEditFrequent,
   onEditCategories,
 }: CategoryPickerProps) {
+  const theme = useTheme();
   const [drillStack, setDrillStack] = useState<{ items: Category[]; path: string[] }[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
 
@@ -82,54 +84,65 @@ export function CategoryPicker({
   return (
     <View>
       {/* Main picker button */}
-      <TouchableOpacity style={styles.pickerButton} onPress={openPicker}>
-        <Text style={[styles.pickerText, !selectedPath.length && { color: '#999' }]}>
+      <TouchableOpacity
+        style={[styles.pickerButton, { borderColor: theme.border, backgroundColor: theme.cardBackground }]}
+        onPress={openPicker}
+      >
+        <Text style={[styles.pickerText, { color: selectedPath.length ? theme.text.primary : theme.text.tertiary }]}>
           {selectedLabel}
         </Text>
-        <Ionicons name="chevron-down" size={14} color="#999" style={{ marginLeft: SPACING.sm }} />
+        <Ionicons name="chevron-down" size={14} color={theme.text.tertiary} style={{ marginLeft: SPACING.sm }} />
       </TouchableOpacity>
 
       {/* Frequent category shortcuts — below the picker */}
       {frequentCategories.length > 0 ? (
         <View style={styles.frequentRow}>
-          {frequentCategories.map((path, i) => (
-            <TouchableOpacity
-              key={i}
-              style={[
-                styles.frequentChip,
-                selectedPath.join('>') === path.join('>') && styles.frequentChipActive,
-              ]}
-              onPress={() => {
-                Keyboard.dismiss();
-                onSelect(path);
-              }}
-            >
-              <Text
+          {frequentCategories.map((path, i) => {
+            const isActive = selectedPath.join('>') === path.join('>');
+            return (
+              <TouchableOpacity
+                key={i}
                 style={[
-                  styles.frequentLabel,
-                  selectedPath.join('>') === path.join('>') && styles.frequentLabelActive,
+                  styles.frequentChip,
+                  { backgroundColor: `${theme.primary}15`, borderColor: `${theme.primary}15` },
+                  isActive && { borderColor: theme.primary, backgroundColor: `${theme.primary}30` },
                 ]}
-                numberOfLines={1}
+                onPress={() => {
+                  Keyboard.dismiss();
+                  onSelect(path);
+                }}
               >
-                {path[path.length - 1]}
-              </Text>
-            </TouchableOpacity>
-          ))}
+                <Text
+                  style={[
+                    styles.frequentLabel,
+                    { color: theme.primary },
+                    isActive && { fontWeight: '700' },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {path[path.length - 1]}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
           {onEditFrequent && (
             <TouchableOpacity style={styles.editFreqBtn} onPress={onEditFrequent}>
-              <Ionicons name="create-outline" size={16} color="#1565C0" />
+              <Ionicons name="create-outline" size={16} color={theme.primary} />
             </TouchableOpacity>
           )}
         </View>
       ) : (
         onEditFrequent && (
-          <View style={styles.emptyFrequentRow}>
-            <Text style={styles.emptyFrequentText}>
+          <View style={[styles.emptyFrequentRow, { backgroundColor: `${theme.primary}08`, borderColor: `${theme.primary}20` }]}>
+            <Text style={[styles.emptyFrequentText, { color: theme.primary }]}>
               No frequent categories yet. Tap to add.
             </Text>
-            <TouchableOpacity style={styles.emptyFrequentBtn} onPress={onEditFrequent}>
-              <Ionicons name="add-circle-outline" size={18} color="#1565C0" />
-              <Text style={styles.emptyFrequentBtnText}>Add Frequent</Text>
+            <TouchableOpacity
+              style={[styles.emptyFrequentBtn, { backgroundColor: `${theme.primary}15` }]}
+              onPress={onEditFrequent}
+            >
+              <Ionicons name="add-circle-outline" size={18} color={theme.primary} />
+              <Text style={[styles.emptyFrequentBtnText, { color: theme.primary }]}>Add Frequent</Text>
             </TouchableOpacity>
           </View>
         )
@@ -137,19 +150,19 @@ export function CategoryPicker({
 
       {/* Drill-down modal */}
       <Modal visible={modalVisible} animationType="slide" presentationStyle="pageSheet">
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
+        <View style={[styles.modalContainer, { backgroundColor: theme.background }]}>
+          <View style={[styles.modalHeader, { borderBottomColor: theme.border }]}>
             <TouchableOpacity onPress={goBack} style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Ionicons
                 name={drillStack.length > 1 ? 'chevron-back' : 'close'}
                 size={20}
-                color="#2196F3"
+                color={theme.primary}
               />
-              <Text style={styles.backButton}>
+              <Text style={[styles.backButton, { color: theme.primary }]}>
                 {drillStack.length > 1 ? 'Back' : 'Close'}
               </Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle} numberOfLines={1}>
+            <Text style={[styles.modalTitle, { color: theme.text.primary }]} numberOfLines={1}>
               {currentPath.length > 0 ? currentPath.join(' > ') : 'Select Category'}
             </Text>
             {onEditCategories && (
@@ -160,7 +173,7 @@ export function CategoryPicker({
                   onEditCategories();
                 }}
               >
-                <Ionicons name="create-outline" size={18} color="#2196F3" />
+                <Ionicons name="create-outline" size={18} color={theme.primary} />
               </TouchableOpacity>
             )}
           </View>
@@ -170,27 +183,27 @@ export function CategoryPicker({
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => (
               <TouchableOpacity
-                style={styles.categoryRow}
+                style={[styles.categoryRow, { backgroundColor: theme.cardBackground }]}
                 onPress={() => handleSelectCategory(item)}
               >
                 <Text style={styles.categoryIcon}>{item.icon ?? '📁'}</Text>
-                <Text style={styles.categoryName}>{item.name}</Text>
+                <Text style={[styles.categoryName, { color: theme.text.primary }]}>{item.name}</Text>
                 {item.children && item.children.length > 0 && (
-                  <Text style={styles.drillIndicator}>›</Text>
+                  <Text style={[styles.drillIndicator, { color: theme.text.tertiary }]}>›</Text>
                 )}
                 {(!item.children || item.children.length === 0) && (
-                  <View style={styles.selectBadge}>
-                    <Text style={styles.selectBadgeText}>Select</Text>
+                  <View style={[styles.selectBadge, { backgroundColor: `${theme.success}20` }]}>
+                    <Text style={[styles.selectBadgeText, { color: theme.success }]}>Select</Text>
                   </View>
                 )}
               </TouchableOpacity>
             )}
-            ItemSeparatorComponent={() => <View style={styles.separator} />}
+            ItemSeparatorComponent={() => <View style={[styles.separator, { backgroundColor: theme.divider }]} />}
           />
 
           {/* If at subcategory level, allow selecting the parent directly */}
           {drillStack.length > 1 && (
-            <View style={styles.selectParentRow}>
+            <View style={[styles.selectParentRow, { borderTopColor: theme.border, backgroundColor: theme.cardBackground }]}>
               <Button
                 title={`Select "${currentPath[currentPath.length - 1]}"`}
                 variant="outline"
@@ -217,21 +230,11 @@ const styles = StyleSheet.create({
   frequentChip: {
     paddingVertical: SPACING.xs,
     paddingHorizontal: SPACING.md,
-    backgroundColor: '#E3F2FD',
     borderRadius: BORDER_RADIUS.sm,
     borderWidth: 1,
-    borderColor: '#E3F2FD',
-  },
-  frequentChipActive: {
-    borderColor: '#2196F3',
-    backgroundColor: '#BBDEFB',
   },
   frequentLabel: {
     fontSize: FONT_SIZE.xs,
-    color: '#1565C0',
-  },
-  frequentLabelActive: {
-    fontWeight: '700',
   },
   editFreqBtn: {
     paddingVertical: SPACING.xs,
@@ -245,15 +248,12 @@ const styles = StyleSheet.create({
     marginTop: SPACING.sm,
     paddingVertical: SPACING.sm,
     paddingHorizontal: SPACING.md,
-    backgroundColor: '#F5F9FF',
     borderRadius: BORDER_RADIUS.md,
     borderWidth: 1,
-    borderColor: '#E3F2FD',
     borderStyle: 'dashed',
   },
   emptyFrequentText: {
     fontSize: FONT_SIZE.xs,
-    color: '#1565C0',
     flex: 1,
   },
   emptyFrequentBtn: {
@@ -262,34 +262,27 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingVertical: SPACING.xs,
     paddingHorizontal: SPACING.sm,
-    backgroundColor: '#E3F2FD',
     borderRadius: BORDER_RADIUS.sm,
   },
   emptyFrequentBtnText: {
     fontSize: FONT_SIZE.xs,
     fontWeight: '600',
-    color: '#1565C0',
   },
   pickerButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 1,
-    borderColor: '#ddd',
     borderRadius: BORDER_RADIUS.md,
     paddingVertical: SPACING.sm,
     paddingHorizontal: SPACING.md,
-    backgroundColor: '#fff',
   },
   pickerText: {
     fontSize: FONT_SIZE.md,
-    color: '#222',
     flex: 1,
   },
-  // chevron replaced by Ionicons inline
   modalContainer: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
     paddingTop: 60,
   },
   modalHeader: {
@@ -298,18 +291,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.lg,
     paddingBottom: SPACING.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
   },
   backButton: {
     fontSize: FONT_SIZE.md,
-    color: '#2196F3',
     fontWeight: '600',
     marginRight: SPACING.md,
   },
   modalTitle: {
     fontSize: FONT_SIZE.lg,
     fontWeight: '700',
-    color: '#222',
     flex: 1,
   },
   editCategoriesBtn: {
@@ -321,7 +311,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: SPACING.md,
     paddingHorizontal: SPACING.lg,
-    backgroundColor: '#fff',
   },
   categoryIcon: {
     fontSize: 22,
@@ -329,34 +318,27 @@ const styles = StyleSheet.create({
   },
   categoryName: {
     fontSize: FONT_SIZE.md,
-    color: '#222',
     flex: 1,
   },
   drillIndicator: {
     fontSize: 22,
-    color: '#999',
     fontWeight: '300',
   },
   selectBadge: {
-    backgroundColor: '#E8F5E9',
     paddingVertical: 2,
     paddingHorizontal: SPACING.sm,
     borderRadius: BORDER_RADIUS.sm,
   },
   selectBadgeText: {
     fontSize: FONT_SIZE.xs,
-    color: '#2E7D32',
     fontWeight: '600',
   },
   separator: {
     height: 1,
-    backgroundColor: '#f0f0f0',
     marginLeft: 56,
   },
   selectParentRow: {
     padding: SPACING.lg,
     borderTopWidth: 1,
-    borderTopColor: '#eee',
-    backgroundColor: '#fff',
   },
 });

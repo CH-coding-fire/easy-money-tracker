@@ -95,6 +95,15 @@ export async function addTransaction(tx: Transaction): Promise<AppData> {
   return data;
 }
 
+export async function addTransactions(txs: Transaction[]): Promise<AppData> {
+  logger.info(TAG, 'addTransactions: start', { count: txs.length });
+  const data = await loadAppData();
+  data.transactions.push(...txs);
+  await saveAppData(data);
+  logger.info(TAG, 'addTransactions: complete', { count: txs.length, ids: txs.map(t => t.id) });
+  return data;
+}
+
 export async function updateTransaction(tx: Transaction): Promise<AppData> {
   logger.info(TAG, 'updateTransaction: start', { id: tx.id });
   const data = await loadAppData();

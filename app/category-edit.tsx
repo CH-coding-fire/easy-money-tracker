@@ -22,6 +22,7 @@ import { SegmentedControl } from '../src/components/SegmentedControl';
 import { Button } from '../src/components/Button';
 import { ErrorBoundary } from '../src/components/ErrorBoundary';
 import { useCategories, useSaveCategories } from '../src/hooks/useCategories';
+import { useTheme } from '../src/hooks/useTheme';
 import { Category, TransactionType } from '../src/types';
 import { SPACING, FONT_SIZE, BORDER_RADIUS } from '../src/constants/spacing';
 import { logger } from '../src/utils/logger';
@@ -40,6 +41,7 @@ function CategoryEditScreen() {
   const categories = useCategories();
   const saveMutation = useSaveCategories();
   const { showToast } = useUIStore();
+  const theme = useTheme();
 
   const [catType, setCatType] = useState<TransactionType>('expense');
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -162,8 +164,8 @@ function CategoryEditScreen() {
         }}
       />
 
-      <Text style={styles.sectionLabel}>All Categories</Text>
-      <Text style={styles.sectionHint}>
+      <Text style={[styles.sectionLabel, { color: theme.text.primary }]}>All Categories</Text>
+      <Text style={[styles.sectionHint, { color: theme.text.tertiary }]}>
         Long press ☰ to drag & reorder. Tap ▼ to expand subcategories.
       </Text>
 
@@ -180,7 +182,11 @@ function CategoryEditScreen() {
             const isExpanded = expandedIds.has(item.id);
 
             return (
-              <View style={[styles.l1Card, isActive && styles.cardActive]}>
+              <View style={[
+                styles.l1Card,
+                { backgroundColor: theme.cardBackground, borderColor: theme.border },
+                isActive && { backgroundColor: `${theme.primary}15`, borderColor: theme.primary, elevation: 6 },
+              ]}>
                 {/* Root row */}
                 <View style={styles.row}>
                   <TouchableOpacity
@@ -190,15 +196,15 @@ function CategoryEditScreen() {
                     style={styles.dragHandle}
                     activeOpacity={0.5}
                   >
-                    <Ionicons name="menu" size={20} color={isActive ? '#2196F3' : '#bbb'} />
+                    <Ionicons name="menu" size={20} color={isActive ? theme.primary : theme.text.tertiary} />
                   </TouchableOpacity>
 
                   <Text style={styles.l1Icon}>{item.icon ?? '📁'}</Text>
 
                   <View style={styles.info}>
-                    <Text style={styles.l1Name}>{item.name}</Text>
+                    <Text style={[styles.l1Name, { color: theme.text.primary }]}>{item.name}</Text>
                     {hasChildren && (
-                      <Text style={styles.count}>
+                      <Text style={[styles.count, { color: theme.text.tertiary }]}>
                         {item.children!.length} subcategories
                       </Text>
                     )}
@@ -206,29 +212,29 @@ function CategoryEditScreen() {
 
                   <View style={styles.actions}>
                     <TouchableOpacity style={styles.actionBtn} onPress={() => openEditModalForCat(item)}>
-                      <Ionicons name="create-outline" size={20} color="#666" />
+                      <Ionicons name="create-outline" size={20} color={theme.text.secondary} />
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.actionBtn} onPress={() => openAddModal([item.name])}>
-                      <Ionicons name="add-circle-outline" size={20} color="#2196F3" />
+                      <Ionicons name="add-circle-outline" size={20} color={theme.primary} />
                     </TouchableOpacity>
                     {hasChildren && (
                       <TouchableOpacity style={styles.actionBtn} onPress={() => toggleExpand(item.id)}>
                         <Ionicons
                           name={isExpanded ? 'chevron-up' : 'chevron-down'}
                           size={20}
-                          color="#666"
+                          color={theme.text.secondary}
                         />
                       </TouchableOpacity>
                     )}
                     <TouchableOpacity style={styles.actionBtn} onPress={() => handleDeleteCat(item)}>
-                      <Ionicons name="trash-outline" size={20} color="#F44336" />
+                      <Ionicons name="trash-outline" size={20} color={theme.error} />
                     </TouchableOpacity>
                   </View>
                 </View>
 
                 {/* ── Level 2: expanded children ── */}
                 {isExpanded && hasChildren && (
-                  <View style={styles.l2Container}>
+                  <View style={[styles.l2Container, { borderTopColor: theme.divider, backgroundColor: theme.background }]}>
                     <NestableDraggableFlatList
                       data={item.children!}
                       keyExtractor={(child) => child.id}
@@ -239,7 +245,11 @@ function CategoryEditScreen() {
                         const canAddL3 = MAX_DEPTH > 2;
 
                         return (
-                          <View style={[styles.l2Card, childActive && styles.cardActive]}>
+                          <View style={[
+                            styles.l2Card,
+                            { borderBottomColor: theme.divider },
+                            childActive && { backgroundColor: `${theme.primary}15` },
+                          ]}>
                             <View style={styles.row}>
                               <TouchableOpacity
                                 onLongPress={childDrag}
@@ -248,15 +258,15 @@ function CategoryEditScreen() {
                                 style={styles.dragHandle}
                                 activeOpacity={0.5}
                               >
-                                <Ionicons name="menu" size={18} color={childActive ? '#2196F3' : '#bbb'} />
+                                <Ionicons name="menu" size={18} color={childActive ? theme.primary : theme.text.tertiary} />
                               </TouchableOpacity>
 
                               <Text style={styles.l2Icon}>{child.icon ?? '📁'}</Text>
 
                               <View style={styles.info}>
-                                <Text style={styles.l2Name}>{child.name}</Text>
+                                <Text style={[styles.l2Name, { color: theme.text.primary }]}>{child.name}</Text>
                                 {childHasKids && (
-                                  <Text style={styles.count}>
+                                  <Text style={[styles.count, { color: theme.text.tertiary }]}>
                                     {child.children!.length} subcategories
                                   </Text>
                                 )}
@@ -264,11 +274,11 @@ function CategoryEditScreen() {
 
                               <View style={styles.actions}>
                                 <TouchableOpacity style={styles.actionBtn} onPress={() => openEditModalForCat(child)}>
-                                  <Ionicons name="create-outline" size={18} color="#666" />
+                                  <Ionicons name="create-outline" size={18} color={theme.text.secondary} />
                                 </TouchableOpacity>
                                 {canAddL3 && (
                                   <TouchableOpacity style={styles.actionBtn} onPress={() => openAddModal([item.name, child.name])}>
-                                    <Ionicons name="add-circle-outline" size={18} color="#2196F3" />
+                                    <Ionicons name="add-circle-outline" size={18} color={theme.primary} />
                                   </TouchableOpacity>
                                 )}
                                 {childHasKids && (
@@ -276,25 +286,29 @@ function CategoryEditScreen() {
                                     <Ionicons
                                       name={childExpanded ? 'chevron-up' : 'chevron-down'}
                                       size={18}
-                                      color="#666"
+                                      color={theme.text.secondary}
                                     />
                                   </TouchableOpacity>
                                 )}
                                 <TouchableOpacity style={styles.actionBtn} onPress={() => handleDeleteCat(child)}>
-                                  <Ionicons name="trash-outline" size={18} color="#F44336" />
+                                  <Ionicons name="trash-outline" size={18} color={theme.error} />
                                 </TouchableOpacity>
                               </View>
                             </View>
 
                             {/* ── Level 3: grandchildren ── */}
                             {childExpanded && childHasKids && (
-                              <View style={styles.l3Container}>
+                              <View style={[styles.l3Container, { borderTopColor: theme.divider, backgroundColor: theme.background }]}>
                                 <NestableDraggableFlatList
                                   data={child.children!}
                                   keyExtractor={(gc) => gc.id}
                                   onDragEnd={({ data }) => handleChildDragEnd(child.id, data)}
                                   renderItem={({ item: gc, drag: gcDrag, isActive: gcActive }: RenderItemParams<Category>) => (
-                                    <View style={[styles.l3Card, gcActive && styles.cardActive]}>
+                                    <View style={[
+                                      styles.l3Card,
+                                      { borderBottomColor: theme.divider },
+                                      gcActive && { backgroundColor: `${theme.primary}15` },
+                                    ]}>
                                       <View style={styles.row}>
                                         <TouchableOpacity
                                           onLongPress={gcDrag}
@@ -303,21 +317,21 @@ function CategoryEditScreen() {
                                           style={styles.dragHandle}
                                           activeOpacity={0.5}
                                         >
-                                          <Ionicons name="menu" size={16} color={gcActive ? '#2196F3' : '#bbb'} />
+                                          <Ionicons name="menu" size={16} color={gcActive ? theme.primary : theme.text.tertiary} />
                                         </TouchableOpacity>
 
                                         <Text style={styles.l2Icon}>{gc.icon ?? '📁'}</Text>
 
                                         <View style={styles.info}>
-                                          <Text style={styles.l2Name}>{gc.name}</Text>
+                                          <Text style={[styles.l2Name, { color: theme.text.primary }]}>{gc.name}</Text>
                                         </View>
 
                                         <View style={styles.actions}>
                                           <TouchableOpacity style={styles.actionBtn} onPress={() => openEditModalForCat(gc)}>
-                                            <Ionicons name="create-outline" size={18} color="#666" />
+                                            <Ionicons name="create-outline" size={18} color={theme.text.secondary} />
                                           </TouchableOpacity>
                                           <TouchableOpacity style={styles.actionBtn} onPress={() => handleDeleteCat(gc)}>
-                                            <Ionicons name="trash-outline" size={18} color="#F44336" />
+                                            <Ionicons name="trash-outline" size={18} color={theme.error} />
                                           </TouchableOpacity>
                                         </View>
                                       </View>
@@ -337,7 +351,7 @@ function CategoryEditScreen() {
           }}
           ListEmptyComponent={
             <View style={styles.empty}>
-              <Text style={styles.emptyText}>No categories yet</Text>
+              <Text style={[styles.emptyText, { color: theme.text.tertiary }]}>No categories yet</Text>
             </View>
           }
         />
@@ -350,34 +364,40 @@ function CategoryEditScreen() {
 
       {/* ── Edit / Add Modal ── */}
       <Modal visible={editModalVisible} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>
+        <View style={[styles.modalOverlay, { backgroundColor: theme.overlay }]}>
+          <View style={[styles.modalContent, { backgroundColor: theme.cardBackground }]}>
+            <Text style={[styles.modalTitle, { color: theme.text.primary }]}>
               {editingCatId ? 'Edit Category' : 'New Category'}
             </Text>
 
             {!editingCatId && addParentPath.length > 0 && (
-              <Text style={styles.modalSubtitle}>
+              <Text style={[styles.modalSubtitle, { color: theme.primary }]}>
                 Adding under: {addParentPath.join(' > ')}
               </Text>
             )}
 
             <TextInput
-              style={styles.modalInput}
+              style={[styles.modalInput, {
+                borderColor: theme.border,
+                color: theme.text.primary,
+                backgroundColor: theme.background,
+              }]}
               placeholder="Category name"
+              placeholderTextColor={theme.text.tertiary}
               value={editName}
               onChangeText={setEditName}
               autoFocus
             />
 
-            <Text style={styles.iconLabel}>Choose icon:</Text>
+            <Text style={[styles.iconLabel, { color: theme.text.secondary }]}>Choose icon:</Text>
             <View style={styles.iconGrid}>
               {ICON_OPTIONS.map((icon) => (
                 <TouchableOpacity
                   key={icon}
                   style={[
                     styles.iconOption,
-                    editIcon === icon && styles.iconOptionActive,
+                    { borderColor: theme.border },
+                    editIcon === icon && { borderColor: theme.primary, backgroundColor: `${theme.primary}15` },
                   ]}
                   onPress={() => setEditIcon(icon)}
                 >
@@ -468,13 +488,11 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: FONT_SIZE.md,
     fontWeight: '700',
-    color: '#222',
     marginBottom: SPACING.xs,
     marginTop: SPACING.md,
   },
   sectionHint: {
     fontSize: FONT_SIZE.xs,
-    color: '#999',
     marginBottom: SPACING.sm,
   },
   scrollContent: {
@@ -493,97 +511,75 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   info: { flex: 1 },
-  count: { fontSize: FONT_SIZE.xs, color: '#888', marginTop: 2 },
+  count: { fontSize: FONT_SIZE.xs, marginTop: 2 },
   actions: { flexDirection: 'row', gap: SPACING.xs },
   actionBtn: { padding: SPACING.xs },
 
   // ── Level 1: root cards ──
   l1Card: {
-    backgroundColor: '#fff',
     borderRadius: BORDER_RADIUS.md,
     paddingVertical: SPACING.sm,
     paddingRight: SPACING.sm,
     marginBottom: SPACING.sm,
     borderWidth: 1,
-    borderColor: '#f0f0f0',
     overflow: 'hidden',
   },
-  cardActive: {
-    backgroundColor: '#E3F2FD',
-    borderColor: '#90CAF9',
-    elevation: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-  },
   l1Icon: { fontSize: 24, marginRight: SPACING.md },
-  l1Name: { fontSize: FONT_SIZE.md, fontWeight: '600', color: '#222' },
+  l1Name: { fontSize: FONT_SIZE.md, fontWeight: '600' },
 
   // ── Level 2: children ──
   l2Container: {
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
     marginTop: SPACING.xs,
     paddingLeft: SPACING.lg,
-    backgroundColor: '#fafafa',
   },
   l2Card: {
     paddingVertical: SPACING.xs,
     paddingRight: SPACING.xs,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
   },
   l2Icon: { fontSize: 18, marginRight: SPACING.sm },
-  l2Name: { fontSize: FONT_SIZE.sm, fontWeight: '500', color: '#333' },
+  l2Name: { fontSize: FONT_SIZE.sm, fontWeight: '500' },
 
   // ── Level 3: grandchildren ──
   l3Container: {
     borderTopWidth: 1,
-    borderTopColor: '#eee',
     marginTop: SPACING.xs,
     paddingLeft: SPACING.lg,
-    backgroundColor: '#f5f5f5',
   },
   l3Card: {
     paddingVertical: SPACING.xs,
     paddingRight: SPACING.xs,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
   },
 
   // ── Empty + add ──
   empty: { alignItems: 'center', paddingVertical: SPACING.xxxl },
-  emptyText: { fontSize: FONT_SIZE.md, color: '#999' },
+  emptyText: { fontSize: FONT_SIZE.md },
   addRow: { paddingVertical: SPACING.md },
 
   // ── Modal ──
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'center',
     padding: SPACING.xl,
   },
   modalContent: {
-    backgroundColor: '#fff',
     borderRadius: BORDER_RADIUS.lg,
     padding: SPACING.xl,
   },
   modalTitle: {
     fontSize: FONT_SIZE.xl,
     fontWeight: '700',
-    color: '#222',
     marginBottom: SPACING.sm,
   },
   modalSubtitle: {
     fontSize: FONT_SIZE.sm,
-    color: '#2196F3',
     fontWeight: '500',
     marginBottom: SPACING.lg,
   },
   modalInput: {
     borderWidth: 1,
-    borderColor: '#ddd',
     borderRadius: BORDER_RADIUS.md,
     paddingVertical: SPACING.sm,
     paddingHorizontal: SPACING.md,
@@ -593,7 +589,6 @@ const styles = StyleSheet.create({
   iconLabel: {
     fontSize: FONT_SIZE.sm,
     fontWeight: '600',
-    color: '#555',
     marginBottom: SPACING.sm,
   },
   iconGrid: {
@@ -609,11 +604,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#eee',
-  },
-  iconOptionActive: {
-    borderColor: '#2196F3',
-    backgroundColor: '#E3F2FD',
   },
   iconText: { fontSize: 20 },
   modalActions: {

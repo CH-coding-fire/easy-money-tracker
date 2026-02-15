@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { PieChart } from 'react-native-gifted-charts';
 import Svg, { Line, G, Text as SvgText } from 'react-native-svg';
 import { FONT_SIZE } from '../constants/spacing';
+import { useTheme } from '../hooks/useTheme';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -61,6 +62,7 @@ export function PieChartWithLabels({
   expandedCategory,
   containerWidth,
 }: PieChartWithLabelsProps) {
+  const theme = useTheme();
   const total = useMemo(
     () => data.reduce((s, d) => s + d.value, 0),
     [data],
@@ -156,8 +158,6 @@ export function PieChartWithLabels({
       const y2 = centerY + elbowR * Math.sin(rad);
 
       // p3 – horizontal end, near the label
-      // Right labels: line ends 6 px before label text
-      // Left labels: line ends 6 px after label text edge
       const HORIZ_GAP = 4;
       const x3 = l.isRight
         ? Math.max(x2, centerX + pieRadius + LINE_GAP) + HORIZ_GAP
@@ -219,7 +219,7 @@ export function PieChartWithLabels({
             innerRadius={pieInnerRadius}
             centerLabelComponent={() =>
               centerLabel ? (
-                <Text style={styles.centerLabel}>{centerLabel}</Text>
+                <Text style={[styles.centerLabel, { color: '#222222' }]}>{centerLabel}</Text>
               ) : null
             }
             showText={false}
@@ -285,7 +285,7 @@ export function PieChartWithLabels({
               >
                 <View style={styles.labelNameRow}>
                   {!l.isRight && hasChildren && (
-                    <Text style={[styles.labelExpandHint, { color: isExpanded ? '#2196F3' : l.item.color }]}>
+                    <Text style={[styles.labelExpandHint, { color: isExpanded ? theme.primary : l.item.color }]}>
                       {isExpanded ? '▼' : '▶'}
                     </Text>
                   )}
@@ -300,12 +300,12 @@ export function PieChartWithLabels({
                     {l.item.text}
                   </Text>
                   {l.isRight && hasChildren && (
-                    <Text style={[styles.labelExpandHint, { color: isExpanded ? '#2196F3' : l.item.color }]}>
+                    <Text style={[styles.labelExpandHint, { color: isExpanded ? theme.primary : l.item.color }]}>
                       {isExpanded ? ' ▼' : ' ▶'}
                     </Text>
                   )}
                 </View>
-                <Text style={styles.labelAmount} numberOfLines={1}>
+                <Text style={[styles.labelAmount, { color: theme.text.secondary }]} numberOfLines={1}>
                   {currency} {l.item.value.toFixed(0)}
                 </Text>
               </View>
@@ -332,7 +332,6 @@ const styles = StyleSheet.create({
   centerLabel: {
     fontSize: FONT_SIZE.sm,
     fontWeight: '800',
-    color: '#222',
     textAlign: 'center',
   },
   /* --- label touch target ------------------------------------------ */
@@ -364,7 +363,6 @@ const styles = StyleSheet.create({
   },
   labelAmount: {
     fontSize: 11,
-    color: '#666',
     fontWeight: '500',
     marginTop: 1,
   },

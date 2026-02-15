@@ -20,7 +20,7 @@ export function Card({ children, style, onLayout }: CardProps) {
           backgroundColor: theme.cardBackground,
           borderRadius: BORDER_RADIUS.lg,
           padding: SPACING.lg,
-          shadowColor: '#000',
+          shadowColor: theme.shadow,
           shadowOffset: { width: 0, height: 4 },
           shadowOpacity: 0.04,
           shadowRadius: 6,

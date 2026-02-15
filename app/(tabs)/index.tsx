@@ -29,15 +29,17 @@ import { CategoryPicker } from '../../src/components/CategoryPicker';
 import { Input } from '../../src/components/Input';
 import { Button } from '../../src/components/Button';
 import { ErrorBoundary } from '../../src/components/ErrorBoundary';
+import { MultiTimesSheet, MultiTimesConfig } from '../../src/components/MultiTimesSheet';
 
 import { useCategories } from '../../src/hooks/useCategories';
 import { useSettings } from '../../src/hooks/useSettings';
-import { useAddTransaction } from '../../src/hooks/useTransactions';
+import { useTheme } from '../../src/hooks/useTheme';
+import { useAddTransaction, useAddTransactions } from '../../src/hooks/useTransactions';
 import { useUIStore } from '../../src/store/uiStore';
 import { TransactionType, Transaction } from '../../src/types';
 import { SPACING, FONT_SIZE, BORDER_RADIUS } from '../../src/constants/spacing';
 import { ALL_CURRENCIES } from '../../src/constants/currencies';
-import { todayISO, nowISO, formatISODate } from '../../src/utils/dateHelpers';
+import { todayISO, nowISO, formatISODate, generateMultiDates } from '../../src/utils/dateHelpers';
 import { logger } from '../../src/utils/logger';
 
 const TAG = 'AddTransactionScreen';
@@ -56,9 +58,11 @@ type TxFormData = z.infer<typeof txSchema>;
 function AddTransactionScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const theme = useTheme();
   const categories = useCategories();
   const settings = useSettings();
   const addMutation = useAddTransaction();
+  const addBatchMutation = useAddTransactions();
   const amountInputRef = useRef<TextInput>(null);
   const scrollViewRef = useRef<ScrollView>(null);
   const titleRowY = useRef(0);
@@ -93,7 +97,9 @@ function AddTransactionScreen() {
   const [categoryPath, setCategoryPath] = useState<string[]>([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [isRecurring, setIsRecurring] = useState(false);
+  const [isMultiTimes, setIsMultiTimes] = useState(false);
+  const [multiTimesConfig, setMultiTimesConfig] = useState<MultiTimesConfig | null>(null);
+  const [multiTimesSheetVisible, setMultiTimesSheetVisible] = useState(false);
   const [currencyPickerVisible, setCurrencyPickerVisible] = useState(false);
   const [currencySearch, setCurrencySearch] = useState('');
 
@@ -123,8 +129,8 @@ function AddTransactionScreen() {
   const [amountEntered, setAmountEntered] = useState(false);
   const [titleEntered, setTitleEntered] = useState(false);
   const categorySelected = categoryPath.length > 0;
-  const canShowRecurring = amountEntered && categorySelected;
-  const canShowTitle = canShowRecurring;
+  const canShowMultiTimes = amountEntered && categorySelected;
+  const canShowTitle = canShowMultiTimes;
   const canShowDescription = canShowTitle && titleEntered;
 
   const canSave = amountEntered && categorySelected;
@@ -138,30 +144,59 @@ function AddTransactionScreen() {
 
   async function onSubmit(data: TxFormData) {
     const now = nowISO();
-    const tx: Transaction = {
-      id: generateUUID(),
-      type: transactionType,
-      amount: Number(data.amount),
-      currency: selectedCurrency,
-      categoryPath,
-      date: formatISODate(selectedDate),
-      title: data.title || undefined,
-      description: data.description || undefined,
-      isRecurring,
-      recurringRule: undefined,
-      createdAt: now,
-      updatedAt: now,
-    };
 
     try {
-      await addMutation.mutateAsync(tx);
-      logger.info(TAG, 'Transaction added', { id: tx.id });
-      showToast('Transaction saved!', 'success');
+      if (isMultiTimes && multiTimesConfig) {
+        // Multi-times: create N transactions with different dates
+        const dates = generateMultiDates(
+          multiTimesConfig.startDate,
+          multiTimesConfig.frequency,
+          multiTimesConfig.count,
+        );
+        const txs: Transaction[] = dates.map((d) => ({
+          id: generateUUID(),
+          type: transactionType,
+          amount: Number(data.amount),
+          currency: selectedCurrency,
+          categoryPath,
+          date: formatISODate(d),
+          title: data.title || undefined,
+          description: data.description || undefined,
+          isRecurring: false,
+          recurringRule: undefined,
+          createdAt: now,
+          updatedAt: now,
+        }));
+        await addBatchMutation.mutateAsync(txs);
+        logger.info(TAG, 'Multi-times transactions added', { count: txs.length });
+        showToast(`${txs.length} transactions saved!`, 'success');
+      } else {
+        // One-time: create single transaction
+        const tx: Transaction = {
+          id: generateUUID(),
+          type: transactionType,
+          amount: Number(data.amount),
+          currency: selectedCurrency,
+          categoryPath,
+          date: formatISODate(selectedDate),
+          title: data.title || undefined,
+          description: data.description || undefined,
+          isRecurring: false,
+          recurringRule: undefined,
+          createdAt: now,
+          updatedAt: now,
+        };
+        await addMutation.mutateAsync(tx);
+        logger.info(TAG, 'Transaction added', { id: tx.id });
+        showToast('Transaction saved!', 'success');
+      }
+
       // Reset form
       reset({ amount: '', title: '', description: '' });
       setCategoryPath([]);
       setSelectedDate(new Date());
-      setIsRecurring(false);
+      setIsMultiTimes(false);
+      setMultiTimesConfig(null);
       setAmountEntered(false);
       setTitleEntered(false);
     } catch (err: any) {
@@ -183,7 +218,7 @@ function AddTransactionScreen() {
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.screenTitle}>Add Transaction</Text>
+          <Text style={[styles.screenTitle, { color: theme.text.primary }]}>Add Transaction</Text>
 
           {/* Row 0: Expense / Income toggle */}
           <SegmentedControl<TransactionType>
@@ -197,14 +232,14 @@ function AddTransactionScreen() {
 
           {/* Row 1: Amount + Currency + Tags */}
           <View style={styles.row}>
-            <Text style={styles.sectionLabel}>Amount</Text>
+            <Text style={[styles.sectionLabel, { color: theme.text.secondary }]}>Amount</Text>
             <View style={styles.amountRow}>
               <TouchableOpacity
-                style={styles.currencyBtn}
+                style={[styles.currencyBtn, { backgroundColor: `${theme.primary}20` }]}
                 onPress={() => { setCurrencySearch(''); setCurrencyPickerVisible(true); }}
                 activeOpacity={0.7}
               >
-                <Text style={styles.currencyText}>
+                <Text style={[styles.currencyText, { color: theme.primary }]}>
                   {selectedCurrency}
                 </Text>
               </TouchableOpacity>
@@ -239,24 +274,24 @@ function AddTransactionScreen() {
                 .map((code) => (
                   <TouchableOpacity
                     key={code}
-                    style={styles.currencyTag}
+                    style={[styles.currencyTag, { backgroundColor: theme.background, borderColor: theme.border }]}
                     onPress={() => setSelectedCurrency(code)}
                   >
-                    <Text style={styles.currencyTagText}>{code}</Text>
+                    <Text style={[styles.currencyTagText, { color: theme.text.secondary }]}>{code}</Text>
                   </TouchableOpacity>
                 ))}
               <TouchableOpacity
-                style={styles.currencyEditBtn}
+                style={[styles.currencyEditBtn, { backgroundColor: `${theme.warning}15`, borderColor: `${theme.warning}40` }]}
                 onPress={() => router.push('/currency-tags')}
               >
-                <Ionicons name="create-outline" size={16} color="#E65100" />
+                <Ionicons name="create-outline" size={16} color={theme.warning} />
               </TouchableOpacity>
             </View>
           </View>
 
           {/* Row 2+3: Category (frequent + full picker) */}
           <View style={[styles.row, !amountEntered && styles.blurred]}>
-            <Text style={styles.sectionLabel}>Category</Text>
+            <Text style={[styles.sectionLabel, { color: theme.text.secondary }]}>Category</Text>
             <CategoryPicker
               categories={currentCategories}
               selectedPath={categoryPath}
@@ -271,15 +306,23 @@ function AddTransactionScreen() {
             />
           </View>
 
-          {/* Row 4: Date */}
+          {/* Row 4: Date / Starting Date */}
           <View style={[styles.row, !amountEntered && styles.blurred]}>
-            <Text style={styles.sectionLabel}>Date</Text>
+            <Text style={[styles.sectionLabel, { color: theme.text.secondary }]}>
+              {isMultiTimes && multiTimesConfig ? 'Starting Date' : 'Date'}
+            </Text>
             <TouchableOpacity
-              style={styles.dateBtn}
-              onPress={() => setShowDatePicker(true)}
+              style={[styles.dateBtn, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}
+              onPress={() => {
+                if (isMultiTimes && multiTimesConfig) {
+                  setMultiTimesSheetVisible(true);
+                } else {
+                  setShowDatePicker(true);
+                }
+              }}
               disabled={!amountEntered}
             >
-              <Text style={styles.dateText}>{formatISODate(selectedDate)}</Text>
+              <Text style={[styles.dateText, { color: theme.text.primary }]}>{formatISODate(selectedDate)}</Text>
             </TouchableOpacity>
             {showDatePicker && (
               <DateTimePicker
@@ -294,18 +337,38 @@ function AddTransactionScreen() {
             )}
           </View>
 
-          {/* Row 5: One-off / Recurring */}
-          <View style={[styles.row, !canShowRecurring && styles.blurred]}>
-            <Text style={styles.sectionLabel}>Type</Text>
+          {/* Row 5: One-time / Multi-times */}
+          <View style={[styles.row, !canShowMultiTimes && styles.blurred]}>
+            <Text style={[styles.sectionLabel, { color: theme.text.secondary }]}>Type</Text>
             <SegmentedControl
               options={[
-                { label: 'One-off', value: 'oneoff' },
-                { label: 'Recurring', value: 'recurring' },
+                { label: 'One-time', value: 'onetime' },
+                { label: 'Multi-times', value: 'multi' },
               ]}
-              selected={isRecurring ? 'recurring' : 'oneoff'}
-              onSelect={(v) => setIsRecurring(v === 'recurring')}
-              disabled={!canShowRecurring}
+              selected={isMultiTimes ? 'multi' : 'onetime'}
+              onSelect={(v) => {
+                const wantsMulti = v === 'multi';
+                setIsMultiTimes(wantsMulti);
+                if (wantsMulti) {
+                  setMultiTimesSheetVisible(true);
+                } else {
+                  setMultiTimesConfig(null);
+                }
+              }}
+              disabled={!canShowMultiTimes}
             />
+            {isMultiTimes && multiTimesConfig && (
+              <Pressable
+                style={styles.multiSummary}
+                onPress={() => setMultiTimesSheetVisible(true)}
+              >
+                <Ionicons name="repeat-outline" size={14} color={theme.text.tertiary} />
+                <Text style={[styles.multiSummaryText, { color: theme.text.tertiary }]}>
+                  {multiTimesConfig.frequency.charAt(0).toUpperCase() + multiTimesConfig.frequency.slice(1)} x{multiTimesConfig.count}, starting {formatISODate(multiTimesConfig.startDate)}
+                </Text>
+                <Ionicons name="chevron-forward" size={14} color={theme.text.tertiary} />
+              </Pressable>
+            )}
           </View>
 
           {/* Row 6: Title */}
@@ -362,33 +425,61 @@ function AddTransactionScreen() {
         </ScrollView>
 
         {/* Floating Save Button */}
-        <View style={styles.floatingBtnContainer}>
+        <View style={[styles.floatingBtnContainer, { backgroundColor: `${theme.background}F2` }]}>
           <Button
             title="Save"
             onPress={handleSubmit(onSubmit)}
             disabled={!canSave}
-            loading={addMutation.isPending}
+            loading={addMutation.isPending || addBatchMutation.isPending}
             size="lg"
             style={styles.saveBtn}
           />
         </View>
 
+        {/* Multi-times Sheet */}
+        <MultiTimesSheet
+          visible={multiTimesSheetVisible}
+          initialDate={selectedDate}
+          initialConfig={multiTimesConfig ?? undefined}
+          onConfirm={(config) => {
+            setMultiTimesConfig(config);
+            setSelectedDate(config.startDate);
+            setMultiTimesSheetVisible(false);
+            logger.info(TAG, 'Multi-times configured', {
+              frequency: config.frequency,
+              count: config.count,
+              startDate: formatISODate(config.startDate),
+            });
+          }}
+          onCancel={() => {
+            setMultiTimesSheetVisible(false);
+            // If no config was previously set, revert to one-time
+            if (!multiTimesConfig) {
+              setIsMultiTimes(false);
+            }
+          }}
+        />
+
         {/* Currency Picker Modal */}
         <Modal visible={currencyPickerVisible} animationType="slide" transparent>
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
+          <View style={[styles.modalOverlay, { backgroundColor: theme.overlay }]}>
+            <View style={[styles.modalContent, { backgroundColor: theme.cardBackground }]}>
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Select Currency</Text>
+                <Text style={[styles.modalTitle, { color: theme.text.primary }]}>Select Currency</Text>
                 <Pressable onPress={() => setCurrencyPickerVisible(false)}>
-                  <Ionicons name="close" size={24} color="#666" />
+                  <Ionicons name="close" size={24} color={theme.text.secondary} />
                 </Pressable>
               </View>
               <TextInput
-                style={styles.modalSearch}
+                style={[styles.modalSearch, {
+                  borderColor: theme.border,
+                  backgroundColor: theme.background,
+                  color: theme.text.primary,
+                }]}
                 placeholder="Search currencies..."
                 value={currencySearch}
                 onChangeText={setCurrencySearch}
-                placeholderTextColor="#999"
+                placeholderTextColor={theme.text.tertiary}
                 autoFocus
               />
               <FlatList
@@ -399,7 +490,11 @@ function AddTransactionScreen() {
                   const isSelected = item.code === selectedCurrency;
                   return (
                     <Pressable
-                      style={[styles.pickerRow, isSelected && styles.pickerRowSelected]}
+                      style={[
+                        styles.pickerRow,
+                        { borderBottomColor: theme.divider },
+                        isSelected && { backgroundColor: `${theme.primary}15` },
+                      ]}
                       onPress={() => {
                         setSelectedCurrency(item.code);
                         setCurrencyPickerVisible(false);
@@ -407,12 +502,12 @@ function AddTransactionScreen() {
                         logger.info(TAG, 'Currency selected from picker', { code: item.code });
                       }}
                     >
-                      <Text style={styles.pickerSymbol}>{item.symbol}</Text>
+                      <Text style={[styles.pickerSymbol, { color: theme.text.primary }]}>{item.symbol}</Text>
                       <View style={styles.pickerInfo}>
-                        <Text style={styles.pickerCode}>{item.code}</Text>
-                        <Text style={styles.pickerName}>{item.name}</Text>
+                        <Text style={[styles.pickerCode, { color: theme.text.primary }]}>{item.code}</Text>
+                        <Text style={[styles.pickerName, { color: theme.text.tertiary }]}>{item.name}</Text>
                       </View>
-                      {isSelected && <Ionicons name="checkmark-circle" size={22} color="#1565C0" />}
+                      {isSelected && <Ionicons name="checkmark-circle" size={22} color={theme.primary} />}
                     </Pressable>
                   );
                 }}
@@ -440,7 +535,6 @@ const styles = StyleSheet.create({
   screenTitle: {
     fontSize: FONT_SIZE.xxl,
     fontWeight: '800',
-    color: '#222',
     marginBottom: SPACING.lg,
     marginTop: SPACING.sm,
   },
@@ -454,7 +548,6 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: FONT_SIZE.sm,
     fontWeight: '600',
-    color: '#555',
     marginBottom: SPACING.xs,
   },
   amountRow: {
@@ -467,13 +560,11 @@ const styles = StyleSheet.create({
   currencyBtn: {
     paddingVertical: 7,
     paddingHorizontal: SPACING.sm,
-    backgroundColor: '#E3F2FD',
     borderRadius: 6,
   },
   currencyText: {
     fontSize: FONT_SIZE.sm,
     fontWeight: '700',
-    color: '#1565C0',
   },
   amountInput: {
     width: 120,
@@ -481,37 +572,41 @@ const styles = StyleSheet.create({
   currencyTag: {
     paddingVertical: 5,
     paddingHorizontal: SPACING.sm,
-    backgroundColor: '#F5F5F5',
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
     alignItems: 'center',
   },
   currencyTagText: {
     fontSize: FONT_SIZE.xs,
     fontWeight: '600',
-    color: '#666',
   },
   currencyEditBtn: {
     padding: 5,
-    backgroundColor: '#FFF3E0',
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#FFE0B2',
     alignItems: 'center',
     justifyContent: 'center',
   },
   dateBtn: {
     paddingVertical: SPACING.sm,
     paddingHorizontal: SPACING.md,
-    backgroundColor: '#fff',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#ddd',
   },
   dateText: {
     fontSize: FONT_SIZE.md,
-    color: '#222',
+  },
+  multiSummary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+    marginTop: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    paddingHorizontal: SPACING.sm,
+  },
+  multiSummaryText: {
+    flex: 1,
+    fontSize: FONT_SIZE.xs,
   },
   floatingBtnContainer: {
     position: 'absolute',
@@ -521,7 +616,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.lg,
     paddingBottom: SPACING.xl,
     paddingTop: SPACING.sm,
-    backgroundColor: 'rgba(245,245,245,0.95)',
   },
   saveBtn: {
     width: '100%',
@@ -529,11 +623,9 @@ const styles = StyleSheet.create({
   // Currency picker modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#fff',
     borderTopLeftRadius: BORDER_RADIUS.lg,
     borderTopRightRadius: BORDER_RADIUS.lg,
     maxHeight: '80%',
@@ -550,18 +642,15 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: FONT_SIZE.lg,
     fontWeight: '700',
-    color: '#222',
   },
   modalSearch: {
     borderWidth: 1,
-    borderColor: '#e0e0e0',
     borderRadius: BORDER_RADIUS.md,
     paddingVertical: SPACING.sm,
     paddingHorizontal: SPACING.md,
     fontSize: FONT_SIZE.md,
     marginHorizontal: SPACING.lg,
     marginBottom: SPACING.sm,
-    backgroundColor: '#fafafa',
   },
   pickerRow: {
     flexDirection: 'row',
@@ -569,15 +658,10 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.sm,
     paddingHorizontal: SPACING.lg,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#f0f0f0',
-  },
-  pickerRowSelected: {
-    backgroundColor: '#E3F2FD',
   },
   pickerSymbol: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#333',
     width: 36,
     textAlign: 'center',
   },
@@ -585,6 +669,6 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: SPACING.sm,
   },
-  pickerCode: { fontSize: FONT_SIZE.md, fontWeight: '600', color: '#222' },
-  pickerName: { fontSize: FONT_SIZE.xs, color: '#888' },
+  pickerCode: { fontSize: FONT_SIZE.md, fontWeight: '600' },
+  pickerName: { fontSize: FONT_SIZE.xs },
 });

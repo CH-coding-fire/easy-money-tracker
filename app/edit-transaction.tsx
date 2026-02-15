@@ -31,6 +31,7 @@ import { ErrorBoundary } from '../src/components/ErrorBoundary';
 
 import { useCategories } from '../src/hooks/useCategories';
 import { useSettings } from '../src/hooks/useSettings';
+import { useTheme } from '../src/hooks/useTheme';
 import { useUpdateTransaction, useTransactions } from '../src/hooks/useTransactions';
 import { useUIStore } from '../src/store/uiStore';
 import { TransactionType, Transaction } from '../src/types';
@@ -56,6 +57,7 @@ function EditTransactionScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
+  const theme = useTheme();
   const categories = useCategories();
   const settings = useSettings();
   const updateMutation = useUpdateTransaction();
@@ -82,14 +84,11 @@ function EditTransactionScreen() {
   }, [id, transactions]);
 
   // ALL hooks must be called unconditionally (React Rules of Hooks).
-  // Use safe defaults when editingTx is null; the early return below
-  // prevents the rest of the UI from rendering with wrong values.
   const [transactionType, setTransactionType] = useState<TransactionType>(editingTx?.type ?? 'expense');
   const [selectedCurrency, setSelectedCurrency] = useState(editingTx?.currency ?? settings.mainCurrency);
   const [categoryPath, setCategoryPath] = useState<string[]>(editingTx ? [...editingTx.categoryPath] : []);
   const [selectedDate, setSelectedDate] = useState(editingTx ? parseLocalDate(editingTx.date) : new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [isRecurring, setIsRecurring] = useState(editingTx?.isRecurring ?? false);
   const [currencyPickerVisible, setCurrencyPickerVisible] = useState(false);
   const [currencySearch, setCurrencySearch] = useState('');
 
@@ -124,13 +123,12 @@ function EditTransactionScreen() {
     currency: editingTx?.currency ?? '',
     categoryPath: editingTx?.categoryPath ?? [],
     date: editingTx?.date ?? '',
-    isRecurring: editingTx?.isRecurring ?? false,
     title: editingTx?.title,
     description: editingTx?.description,
     type: editingTx?.type ?? 'expense',
   }), [editingTx?.id]);
 
-  // Check if form has changed (must be before conditional return — Rules of Hooks)
+  // Check if form has changed
   const hasChanges = useMemo(() => {
     if (!editingTx) return false;
     const currentAmount = Number(formValues.amount) || 0;
@@ -141,20 +139,19 @@ function EditTransactionScreen() {
       selectedCurrency !== original.currency ||
       JSON.stringify(categoryPath) !== JSON.stringify(original.categoryPath) ||
       currentDate !== original.date ||
-      isRecurring !== original.isRecurring ||
       (formValues.title || '') !== (original.title || '') ||
       (formValues.description || '') !== (original.description || '') ||
       transactionType !== original.type
     );
-  }, [editingTx, formValues, selectedCurrency, categoryPath, selectedDate, isRecurring, transactionType, original]);
+  }, [editingTx, formValues, selectedCurrency, categoryPath, selectedDate, transactionType, original]);
 
   // If transaction not found, show error (AFTER all hooks)
   if (!editingTx) {
     return (
       <ScreenContainer>
         <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle-outline" size={48} color="#F44336" />
-          <Text style={styles.errorText}>Transaction not found</Text>
+          <Ionicons name="alert-circle-outline" size={48} color={theme.error} />
+          <Text style={[styles.errorText, { color: theme.text.secondary }]}>Transaction not found</Text>
           <Button title="Go Back" onPress={() => router.back()} size="md" />
         </View>
       </ScreenContainer>
@@ -182,8 +179,8 @@ function EditTransactionScreen() {
       date: formatISODate(selectedDate),
       title: data.title || undefined,
       description: data.description || undefined,
-      isRecurring,
-      recurringRule: editingTx.recurringRule,
+      isRecurring: false,
+      recurringRule: undefined,
       createdAt: editingTx.createdAt,
       updatedAt: now,
     };
@@ -228,9 +225,9 @@ function EditTransactionScreen() {
               onPress={() => router.back()}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <Ionicons name="arrow-back" size={24} color="#222" />
+              <Ionicons name="arrow-back" size={24} color={theme.text.primary} />
             </TouchableOpacity>
-            <Text style={styles.screenTitle}>Edit Transaction</Text>
+            <Text style={[styles.screenTitle, { color: theme.text.primary }]}>Edit Transaction</Text>
           </View>
 
           {/* Row 0: Expense / Income toggle */}
@@ -247,11 +244,11 @@ function EditTransactionScreen() {
           <Card style={styles.row}>
             <View style={styles.amountRow}>
               <TouchableOpacity
-                style={styles.currencyBtn}
+                style={[styles.currencyBtn, { backgroundColor: `${theme.primary}20` }]}
                 onPress={() => { setCurrencySearch(''); setCurrencyPickerVisible(true); }}
                 activeOpacity={0.7}
               >
-                <Text style={styles.currencyText}>
+                <Text style={[styles.currencyText, { color: theme.primary }]}>
                   {selectedCurrency}
                 </Text>
               </TouchableOpacity>
@@ -285,17 +282,17 @@ function EditTransactionScreen() {
                   .map((code) => (
                     <TouchableOpacity
                       key={code}
-                      style={styles.currencyTag}
+                      style={[styles.currencyTag, { backgroundColor: theme.background, borderColor: theme.border }]}
                       onPress={() => setSelectedCurrency(code)}
                     >
-                      <Text style={styles.currencyTagText}>{code}</Text>
+                      <Text style={[styles.currencyTagText, { color: theme.text.secondary }]}>{code}</Text>
                     </TouchableOpacity>
                   ))}
                 <TouchableOpacity
-                  style={styles.currencyEditBtn}
+                  style={[styles.currencyEditBtn, { backgroundColor: `${theme.warning}15`, borderColor: `${theme.warning}40` }]}
                   onPress={() => router.push('/currency-tags')}
                 >
-                  <Ionicons name="create-outline" size={16} color="#E65100" />
+                  <Ionicons name="create-outline" size={16} color={theme.warning} />
                 </TouchableOpacity>
               </View>
             )}
@@ -303,7 +300,7 @@ function EditTransactionScreen() {
 
           {/* Row 2+3: Category */}
           <View style={styles.row}>
-            <Text style={styles.sectionLabel}>Category</Text>
+            <Text style={[styles.sectionLabel, { color: theme.text.secondary }]}>Category</Text>
             <CategoryPicker
               categories={currentCategories}
               selectedPath={categoryPath}
@@ -318,12 +315,12 @@ function EditTransactionScreen() {
 
           {/* Row 4: Date */}
           <View style={styles.row}>
-            <Text style={styles.sectionLabel}>Date</Text>
+            <Text style={[styles.sectionLabel, { color: theme.text.secondary }]}>Date</Text>
             <TouchableOpacity
-              style={styles.dateBtn}
+              style={[styles.dateBtn, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}
               onPress={() => setShowDatePicker(true)}
             >
-              <Text style={styles.dateText}>{formatISODate(selectedDate)}</Text>
+              <Text style={[styles.dateText, { color: theme.text.primary }]}>{formatISODate(selectedDate)}</Text>
             </TouchableOpacity>
             {showDatePicker && (
               <DateTimePicker
@@ -338,20 +335,7 @@ function EditTransactionScreen() {
             )}
           </View>
 
-          {/* Row 5: One-off / Recurring */}
-          <View style={styles.row}>
-            <Text style={styles.sectionLabel}>Type</Text>
-            <SegmentedControl
-              options={[
-                { label: 'One-off', value: 'oneoff' },
-                { label: 'Recurring', value: 'recurring' },
-              ]}
-              selected={isRecurring ? 'recurring' : 'oneoff'}
-              onSelect={(v) => setIsRecurring(v === 'recurring')}
-            />
-          </View>
-
-          {/* Row 6: Title */}
+          {/* Row 5: Title */}
           <View
             style={styles.row}
             onLayout={(e) => { titleRowY.current = e.nativeEvent.layout.y; }}
@@ -400,7 +384,7 @@ function EditTransactionScreen() {
         </ScrollView>
 
         {/* Floating Update Button — sits above the custom tab bar */}
-        <View style={[styles.floatingBtnContainer, { bottom: tabBarHeight }]}>
+        <View style={[styles.floatingBtnContainer, { bottom: tabBarHeight, backgroundColor: `${theme.background}F2` }]}>
           <Button
             title="Update"
             onPress={handleSubmit(onSubmit)}
@@ -417,6 +401,8 @@ function EditTransactionScreen() {
           {
             height: tabBarHeight,
             paddingBottom: Math.max(insets.bottom, 4),
+            backgroundColor: theme.cardBackground,
+            borderTopColor: theme.border,
           },
         ]}>
           {TAB_ITEMS.map((tab) => (
@@ -426,28 +412,32 @@ function EditTransactionScreen() {
               onPress={() => router.replace(tab.route as any)}
               activeOpacity={0.6}
             >
-              <Ionicons name={tab.icon} size={24} color="#999" />
-              <Text style={styles.tabLabel}>{tab.label}</Text>
+              <Ionicons name={tab.icon} size={24} color={theme.text.tertiary} />
+              <Text style={[styles.tabLabel, { color: theme.text.tertiary }]}>{tab.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
         {/* Currency Picker Modal */}
         <Modal visible={currencyPickerVisible} animationType="slide" transparent>
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
+          <View style={[styles.modalOverlay, { backgroundColor: theme.overlay }]}>
+            <View style={[styles.modalContent, { backgroundColor: theme.cardBackground }]}>
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Select Currency</Text>
+                <Text style={[styles.modalTitle, { color: theme.text.primary }]}>Select Currency</Text>
                 <Pressable onPress={() => setCurrencyPickerVisible(false)}>
-                  <Ionicons name="close" size={24} color="#666" />
+                  <Ionicons name="close" size={24} color={theme.text.secondary} />
                 </Pressable>
               </View>
               <TextInput
-                style={styles.modalSearch}
+                style={[styles.modalSearch, {
+                  borderColor: theme.border,
+                  backgroundColor: theme.background,
+                  color: theme.text.primary,
+                }]}
                 placeholder="Search currencies..."
                 value={currencySearch}
                 onChangeText={setCurrencySearch}
-                placeholderTextColor="#999"
+                placeholderTextColor={theme.text.tertiary}
                 autoFocus
               />
               <FlatList
@@ -458,7 +448,11 @@ function EditTransactionScreen() {
                   const isSelected = item.code === selectedCurrency;
                   return (
                     <Pressable
-                      style={[styles.pickerRow, isSelected && styles.pickerRowSelected]}
+                      style={[
+                        styles.pickerRow,
+                        { borderBottomColor: theme.divider },
+                        isSelected && { backgroundColor: `${theme.primary}15` },
+                      ]}
                       onPress={() => {
                         setSelectedCurrency(item.code);
                         setCurrencyPickerVisible(false);
@@ -466,12 +460,12 @@ function EditTransactionScreen() {
                         logger.info(TAG, 'Currency selected from picker', { code: item.code });
                       }}
                     >
-                      <Text style={styles.pickerSymbol}>{item.symbol}</Text>
+                      <Text style={[styles.pickerSymbol, { color: theme.text.primary }]}>{item.symbol}</Text>
                       <View style={styles.pickerInfo}>
-                        <Text style={styles.pickerCode}>{item.code}</Text>
-                        <Text style={styles.pickerName}>{item.name}</Text>
+                        <Text style={[styles.pickerCode, { color: theme.text.primary }]}>{item.code}</Text>
+                        <Text style={[styles.pickerName, { color: theme.text.tertiary }]}>{item.name}</Text>
                       </View>
-                      {isSelected && <Ionicons name="checkmark-circle" size={22} color="#1565C0" />}
+                      {isSelected && <Ionicons name="checkmark-circle" size={22} color={theme.primary} />}
                     </Pressable>
                   );
                 }}
@@ -510,7 +504,6 @@ const styles = StyleSheet.create({
   screenTitle: {
     fontSize: FONT_SIZE.xxl,
     fontWeight: '800',
-    color: '#222',
   },
   errorContainer: {
     flex: 1,
@@ -520,7 +513,6 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: FONT_SIZE.lg,
-    color: '#666',
     fontWeight: '600',
   },
   row: {
@@ -529,7 +521,6 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: FONT_SIZE.sm,
     fontWeight: '600',
-    color: '#555',
     marginBottom: SPACING.xs,
   },
   amountRow: {
@@ -540,14 +531,12 @@ const styles = StyleSheet.create({
   currencyBtn: {
     paddingVertical: SPACING.sm + 2,
     paddingHorizontal: SPACING.md,
-    backgroundColor: '#E3F2FD',
     borderRadius: 8,
     marginTop: 2,
   },
   currencyText: {
     fontSize: FONT_SIZE.md,
     fontWeight: '700',
-    color: '#1565C0',
   },
   amountInput: {
     flex: 1,
@@ -562,25 +551,20 @@ const styles = StyleSheet.create({
   currencyTag: {
     paddingVertical: SPACING.sm - 2,
     paddingHorizontal: SPACING.md,
-    backgroundColor: '#F5F5F5',
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
     minWidth: 55,
     alignItems: 'center',
   },
   currencyTagText: {
     fontSize: FONT_SIZE.sm,
     fontWeight: '600',
-    color: '#666',
   },
   currencyEditBtn: {
     paddingVertical: SPACING.xs - 2,
     paddingHorizontal: SPACING.xs,
-    backgroundColor: '#FFF3E0',
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#FFE0B2',
     marginLeft: SPACING.xs,
     alignItems: 'center',
     justifyContent: 'center',
@@ -588,14 +572,11 @@ const styles = StyleSheet.create({
   dateBtn: {
     paddingVertical: SPACING.sm,
     paddingHorizontal: SPACING.md,
-    backgroundColor: '#fff',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#ddd',
   },
   dateText: {
     fontSize: FONT_SIZE.md,
-    color: '#222',
   },
   floatingBtnContainer: {
     position: 'absolute',
@@ -605,7 +586,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.lg,
     paddingBottom: SPACING.xl,
     paddingTop: SPACING.sm,
-    backgroundColor: 'rgba(245,245,245,0.95)',
   },
   saveBtn: {
     width: '100%',
@@ -613,11 +593,9 @@ const styles = StyleSheet.create({
   // Currency picker modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#fff',
     borderTopLeftRadius: BORDER_RADIUS.lg,
     borderTopRightRadius: BORDER_RADIUS.lg,
     maxHeight: '80%',
@@ -634,18 +612,15 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: FONT_SIZE.lg,
     fontWeight: '700',
-    color: '#222',
   },
   modalSearch: {
     borderWidth: 1,
-    borderColor: '#e0e0e0',
     borderRadius: BORDER_RADIUS.md,
     paddingVertical: SPACING.sm,
     paddingHorizontal: SPACING.md,
     fontSize: FONT_SIZE.md,
     marginHorizontal: SPACING.lg,
     marginBottom: SPACING.sm,
-    backgroundColor: '#fafafa',
   },
   pickerRow: {
     flexDirection: 'row',
@@ -653,15 +628,10 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.sm,
     paddingHorizontal: SPACING.lg,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#f0f0f0',
-  },
-  pickerRowSelected: {
-    backgroundColor: '#E3F2FD',
   },
   pickerSymbol: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#333',
     width: 36,
     textAlign: 'center',
   },
@@ -669,14 +639,12 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: SPACING.sm,
   },
-  pickerCode: { fontSize: FONT_SIZE.md, fontWeight: '600', color: '#222' },
-  pickerName: { fontSize: FONT_SIZE.xs, color: '#888' },
+  pickerCode: { fontSize: FONT_SIZE.md, fontWeight: '600' },
+  pickerName: { fontSize: FONT_SIZE.xs },
   // Custom tab bar
   customTabBar: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
     borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
     alignItems: 'center',
     justifyContent: 'space-around',
   },
@@ -689,7 +657,6 @@ const styles = StyleSheet.create({
   tabLabel: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#999',
     marginTop: 2,
   },
 });

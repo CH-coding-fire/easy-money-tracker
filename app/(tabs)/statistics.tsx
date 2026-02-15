@@ -250,35 +250,46 @@ function StatisticsScreen() {
 
         {/* Date range */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.presetScroll}>
-          {DATE_PRESETS.map((p) => (
-            <TouchableOpacity
-              key={p.value}
-              style={[styles.presetChip, statsDatePreset === p.value && styles.presetChipActive]}
-              onPress={() => handlePresetChange(p.value)}
-            >
-              <Text style={[styles.presetText, statsDatePreset === p.value && styles.presetTextActive]}>
-                {p.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          {DATE_PRESETS.map((p) => {
+            const isActive = statsDatePreset === p.value;
+            return (
+              <TouchableOpacity
+                key={p.value}
+                style={[
+                  styles.presetChip,
+                  { backgroundColor: `${theme.primary}15` },
+                  isActive && { backgroundColor: theme.primary },
+                ]}
+                onPress={() => handlePresetChange(p.value)}
+              >
+                <Text style={[
+                  styles.presetText,
+                  { color: theme.primary },
+                  isActive && { color: '#fff' },
+                ]}>
+                  {p.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
 
         {/* Date range nav */}
         <View style={styles.dateNav}>
           <TouchableOpacity onPress={() => handleShift('prev')} style={styles.navArrowBtn}>
-            <Ionicons name="chevron-back" size={20} color="#2196F3" />
+            <Ionicons name="chevron-back" size={20} color={theme.primary} />
           </TouchableOpacity>
-          <Text style={styles.dateRangeText}>{formatDateRange(dateRange)}</Text>
+          <Text style={[styles.dateRangeText, { color: theme.text.secondary }]}>{formatDateRange(dateRange)}</Text>
           <TouchableOpacity onPress={() => handleShift('next')} style={styles.navArrowBtn}>
-            <Ionicons name="chevron-forward" size={20} color="#2196F3" />
+            <Ionicons name="chevron-forward" size={20} color={theme.primary} />
           </TouchableOpacity>
         </View>
 
         {/* Currency Selector */}
         <Card style={styles.currencySelector}>
           <View style={styles.currencySelectorRow}>
-            <View style={styles.selectedCurrencyBtn}>
-              <Text style={styles.selectedCurrencyText}>
+            <View style={[styles.selectedCurrencyBtn, { backgroundColor: `${theme.primary}20` }]}>
+              <Text style={[styles.selectedCurrencyText, { color: theme.primary }]}>
                 {statsCurrency}
               </Text>
             </View>
@@ -291,17 +302,17 @@ function StatisticsScreen() {
                 .map((code) => (
                   <TouchableOpacity
                     key={code}
-                    style={styles.currencyTag}
+                    style={[styles.currencyTag, { backgroundColor: theme.background, borderColor: theme.border }]}
                     onPress={() => setStatsCurrency(code)}
                   >
-                    <Text style={styles.currencyTagText}>{code}</Text>
+                    <Text style={[styles.currencyTagText, { color: theme.text.secondary }]}>{code}</Text>
                   </TouchableOpacity>
                 ))}
               <TouchableOpacity
-                style={styles.currencyEditBtn}
+                style={[styles.currencyEditBtn, { backgroundColor: `${theme.warning}15`, borderColor: `${theme.warning}40` }]}
                 onPress={() => router.push('/currency-tags')}
               >
-                <Ionicons name="create-outline" size={16} color="#E65100" />
+                <Ionicons name="create-outline" size={16} color={theme.warning} />
               </TouchableOpacity>
             </View>
           </View>
@@ -311,15 +322,15 @@ function StatisticsScreen() {
             <View style={styles.fxInfoLeft}>
               {(fxFetching || fxRefreshing) ? (
                 <View style={styles.fxLoadingRow}>
-                  <ActivityIndicator size="small" color="#2196F3" style={{ marginRight: 4 }} />
-                  <Text style={styles.fxInfoText}>Updating...</Text>
+                  <ActivityIndicator size="small" color={theme.primary} style={{ marginRight: 4 }} />
+                  <Text style={[styles.fxInfoText, { color: theme.text.tertiary }]}>Updating...</Text>
                 </View>
               ) : fxError ? (
-                <Text style={[styles.fxInfoText, { color: '#F44336' }]}>
+                <Text style={[styles.fxInfoText, { color: theme.error }]}>
                   Update failed • using previous rates
                 </Text>
               ) : fxCache.lastUpdatedAt ? (
-                <Text style={styles.fxInfoText}>
+                <Text style={[styles.fxInfoText, { color: theme.text.tertiary }]}>
                   Updated: {new Date(fxCache.lastUpdatedAt).toLocaleString('en-US', { 
                     month: 'short', 
                     day: 'numeric', 
@@ -328,24 +339,24 @@ function StatisticsScreen() {
                   })} • Source: frankfurter.app
                 </Text>
               ) : (
-                <Text style={styles.fxInfoText}>No FX rates loaded</Text>
+                <Text style={[styles.fxInfoText, { color: theme.text.tertiary }]}>No FX rates loaded</Text>
               )}
             </View>
             <View style={styles.fxActions}>
               {/* Show rates button */}
               <TouchableOpacity
-                style={styles.fxSmallBtn}
+                style={[styles.fxSmallBtn, { backgroundColor: theme.background }]}
                 onPress={() => setShowFxRates(!showFxRates)}
               >
                 <Ionicons
                   name={showFxRates ? 'chevron-up' : 'information-circle-outline'}
                   size={14}
-                  color="#2196F3"
+                  color={theme.primary}
                 />
               </TouchableOpacity>
               {/* Refresh button */}
               <TouchableOpacity
-                style={styles.fxSmallBtn}
+                style={[styles.fxSmallBtn, { backgroundColor: theme.background }]}
                 disabled={fxFetching || fxRefreshing}
                 onPress={async () => {
                   setFxRefreshing(true);
@@ -353,15 +364,15 @@ function StatisticsScreen() {
                   setFxRefreshing(false);
                 }}
               >
-                <Ionicons name="refresh" size={14} color={(fxFetching || fxRefreshing) ? '#ccc' : '#2196F3'} />
+                <Ionicons name="refresh" size={14} color={(fxFetching || fxRefreshing) ? theme.border : theme.primary} />
               </TouchableOpacity>
             </View>
           </View>
 
           {/* Expandable FX rates – only currencies involved in transactions */}
           {showFxRates && fxCache.lastUpdatedAt && (
-            <View style={styles.fxRatesBox}>
-              <Text style={styles.fxRatesTitle}>
+            <View style={[styles.fxRatesBox, { backgroundColor: theme.background }]}>
+              <Text style={[styles.fxRatesTitle, { color: theme.text.tertiary }]}>
                 Rates (base: {statsCurrency})
               </Text>
               <View style={styles.fxRatesGrid}>
@@ -373,13 +384,13 @@ function StatisticsScreen() {
                     const crossRate = convertCurrency(1, statsCurrency, code, fxCache);
                     if (crossRate === 1 && statsCurrency !== code) return null; // no rate available
                     return (
-                      <Text key={code} style={styles.fxRateItem}>
+                      <Text key={code} style={[styles.fxRateItem, { color: theme.text.secondary }]}>
                         {code}:{'  '}{crossRate.toFixed(4)}
                       </Text>
                     );
                   })}
                 {involvedCurrencies.filter((c) => c !== statsCurrency).length === 0 && (
-                  <Text style={styles.fxRateItem}>
+                  <Text style={[styles.fxRateItem, { color: theme.text.secondary }]}>
                     All transactions are in {statsCurrency}
                   </Text>
                 )}
@@ -391,18 +402,18 @@ function StatisticsScreen() {
         {/* Total */}
         {statsMode !== 'balance_line' && (
           <Card style={styles.totalCard}>
-            <Text style={styles.totalCardTitle}>
+            <Text style={[styles.totalCardTitle, { color: theme.text.tertiary }]}>
               Total {statsMode === 'expense_pie' ? 'Expense' : 'Income'}
             </Text>
             
             <View style={styles.totalCardContent}>
               {/* Left: Original amounts */}
               <View style={styles.totalCardLeft}>
-                <Text style={styles.totalCardSectionLabel}>Original</Text>
+                <Text style={[styles.totalCardSectionLabel, { color: theme.text.tertiary }]}>Original</Text>
                 {originalCurrencyTotals.length > 0 && (
                   <View style={styles.originalAmountsList}>
                     {originalCurrencyTotals.map(({ currency, amount }) => (
-                      <Text key={currency} style={styles.originalAmountItem}>
+                      <Text key={currency} style={[styles.originalAmountItem, { color: theme.text.secondary }]}>
                         {currency} {amount.toFixed(2)}
                       </Text>
                     ))}
@@ -411,15 +422,15 @@ function StatisticsScreen() {
               </View>
 
               {/* Divider */}
-              <View style={styles.totalCardDivider} />
+              <View style={[styles.totalCardDivider, { backgroundColor: theme.divider }]} />
 
               {/* Right: Converted total */}
               <View style={styles.totalCardRight}>
-                <Text style={styles.totalCardSectionLabel}>Total</Text>
-                <Text style={[styles.totalAmount, { color: statsMode === 'expense_pie' ? '#F44336' : '#4CAF50' }]}>
+                <Text style={[styles.totalCardSectionLabel, { color: theme.text.tertiary }]}>Total</Text>
+                <Text style={[styles.totalAmount, { color: statsMode === 'expense_pie' ? theme.error : theme.success }]}>
                   {statsCurrency}
                 </Text>
-                <Text style={[styles.totalAmountValue, { color: statsMode === 'expense_pie' ? '#F44336' : '#4CAF50' }]}>
+                <Text style={[styles.totalAmountValue, { color: statsMode === 'expense_pie' ? theme.error : theme.success }]}>
                   {total.toFixed(2)}
                 </Text>
               </View>
@@ -432,7 +443,7 @@ function StatisticsScreen() {
           <>
             {/* Pie chart – Level 1 (always visible) */}
             <Card style={styles.chartCard}>
-              <Text style={styles.chartTitle}>By Category</Text>
+              <Text style={[styles.chartTitle, { color: theme.text.primary }]}>By Category</Text>
               {pieData.length > 0 ? (
                 <PieChartWithLabels
                   data={pieData}
@@ -452,7 +463,7 @@ function StatisticsScreen() {
                   containerWidth={SCREEN_WIDTH - SPACING.lg * 4}
                 />
               ) : (
-                <Text style={styles.noData}>No data for this period</Text>
+                <Text style={[styles.noData, { color: theme.text.tertiary }]}>No data for this period</Text>
               )}
             </Card>
 
@@ -470,16 +481,16 @@ function StatisticsScreen() {
               >
                 <View style={styles.drillHeader}>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.chartTitle}>
+                    <Text style={[styles.chartTitle, { color: theme.text.primary }]}>
                       {statsDrillCategory}
                     </Text>
-                    <Text style={styles.drillSubtitle}>Subcategories</Text>
+                    <Text style={[styles.drillSubtitle, { color: theme.text.tertiary }]}>Subcategories</Text>
                   </View>
                   <TouchableOpacity
                     onPress={() => setStatsDrillCategory(null)}
-                    style={styles.drillCloseBtn}
+                    style={[styles.drillCloseBtn, { backgroundColor: theme.background }]}
                   >
-                    <Ionicons name="close" size={18} color="#999" />
+                    <Ionicons name="close" size={18} color={theme.text.tertiary} />
                   </TouchableOpacity>
                 </View>
                 <PieChartWithLabels
@@ -496,8 +507,8 @@ function StatisticsScreen() {
             {/* Bar chart */}
             <Card style={styles.chartCard}>
               <View style={styles.chartTitleRow}>
-                <Text style={styles.chartTitle}>Daily Trend</Text>
-                <Text style={styles.chartCurrency}>{statsCurrency}</Text>
+                <Text style={[styles.chartTitle, { color: theme.text.primary }]}>Daily Trend</Text>
+                <Text style={[styles.chartCurrency, { color: theme.primary, backgroundColor: `${theme.primary}20` }]}>{statsCurrency}</Text>
               </View>
               {barData.length > 0 ? (
                 <BarChart
@@ -505,8 +516,8 @@ function StatisticsScreen() {
                   barWidth={Math.max(8, Math.min(24, CHART_WIDTH / barData.length - 4))}
                   spacing={4}
                   height={180}
-                  xAxisLabelTextStyle={styles.axisLabel}
-                  yAxisTextStyle={styles.axisLabel}
+                  xAxisLabelTextStyle={[styles.axisLabel, { color: theme.text.tertiary }]}
+                  yAxisTextStyle={[styles.axisLabel, { color: theme.text.tertiary }]}
                   yAxisLabelWidth={40}
                   formatYLabel={formatYAxisLabel}
                   noOfSections={4}
@@ -514,9 +525,11 @@ function StatisticsScreen() {
                   hideRules
                   barBorderRadius={4}
                   isAnimated
+                  xAxisColor={theme.border}
+                  yAxisColor={theme.border}
                 />
               ) : (
-                <Text style={styles.noData}>No data for this period</Text>
+                <Text style={[styles.noData, { color: theme.text.tertiary }]}>No data for this period</Text>
               )}
             </Card>
           </>
@@ -526,8 +539,8 @@ function StatisticsScreen() {
         {statsMode === 'balance_line' && (
           <Card style={styles.chartCard}>
             <View style={styles.chartTitleRow}>
-              <Text style={styles.chartTitle}>Net Balance</Text>
-              <Text style={styles.chartCurrency}>{statsCurrency}</Text>
+              <Text style={[styles.chartTitle, { color: theme.text.primary }]}>Net Balance</Text>
+              <Text style={[styles.chartCurrency, { color: theme.primary, backgroundColor: `${theme.primary}20` }]}>{statsCurrency}</Text>
             </View>
             <BalanceBarChart
               data={balanceBarData}
@@ -555,7 +568,6 @@ const styles = StyleSheet.create({
   screenTitle: {
     fontSize: FONT_SIZE.xxl,
     fontWeight: '800',
-    color: '#222',
     marginBottom: SPACING.lg,
     marginTop: SPACING.sm,
   },
@@ -567,12 +579,9 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.xs,
     paddingHorizontal: SPACING.md,
     borderRadius: BORDER_RADIUS.sm,
-    backgroundColor: '#E0E0E0',
     marginRight: SPACING.xs,
   },
-  presetChipActive: { backgroundColor: '#2196F3' },
-  presetText: { fontSize: FONT_SIZE.xs, color: '#555', fontWeight: '600' },
-  presetTextActive: { color: '#fff' },
+  presetText: { fontSize: FONT_SIZE.xs, fontWeight: '600' },
   dateNav: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -581,7 +590,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.sm,
   },
   navArrowBtn: { padding: SPACING.sm },
-  dateRangeText: { fontSize: FONT_SIZE.sm, color: '#555', fontWeight: '600' },
+  dateRangeText: { fontSize: FONT_SIZE.sm, fontWeight: '600' },
   currencySelector: {
     marginBottom: SPACING.sm,
     paddingVertical: SPACING.sm,
@@ -590,7 +599,6 @@ const styles = StyleSheet.create({
   selectedCurrencyBtn: {
     paddingVertical: SPACING.xs,
     paddingHorizontal: SPACING.md,
-    backgroundColor: '#E3F2FD',
     borderRadius: 6,
     minWidth: 60,
     alignItems: 'center',
@@ -598,7 +606,6 @@ const styles = StyleSheet.create({
   selectedCurrencyText: {
     fontSize: FONT_SIZE.sm,
     fontWeight: '700',
-    color: '#1565C0',
   },
   currencyTagsRow: {
     flexDirection: 'row',
@@ -610,25 +617,20 @@ const styles = StyleSheet.create({
   currencyTag: {
     paddingVertical: SPACING.xs - 2,
     paddingHorizontal: SPACING.sm,
-    backgroundColor: '#F5F5F5',
     borderRadius: 4,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
     minWidth: 48,
     alignItems: 'center',
   },
   currencyTagText: {
     fontSize: FONT_SIZE.xs,
     fontWeight: '600',
-    color: '#666',
   },
   currencyEditBtn: {
     paddingVertical: SPACING.xs - 2,
     paddingHorizontal: SPACING.xs,
-    backgroundColor: '#FFF3E0',
     borderRadius: 4,
     borderWidth: 1,
-    borderColor: '#FFE0B2',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -649,7 +651,6 @@ const styles = StyleSheet.create({
   },
   fxInfoText: {
     fontSize: 9,
-    color: '#999',
   },
   fxLoadingRow: {
     flexDirection: 'row',
@@ -662,18 +663,15 @@ const styles = StyleSheet.create({
   fxSmallBtn: {
     padding: 4,
     borderRadius: 4,
-    backgroundColor: '#f5f5f5',
   },
   fxRatesBox: {
     marginTop: SPACING.xs,
-    backgroundColor: '#fafafa',
     borderRadius: BORDER_RADIUS.sm,
     padding: SPACING.sm,
   },
   fxRatesTitle: {
     fontSize: 9,
     fontWeight: '700',
-    color: '#888',
     marginBottom: 4,
   },
   fxRatesGrid: {
@@ -683,7 +681,6 @@ const styles = StyleSheet.create({
   },
   fxRateItem: {
     fontSize: 9,
-    color: '#666',
     fontFamily: 'monospace',
   },
   totalCard: { 
@@ -693,7 +690,6 @@ const styles = StyleSheet.create({
   },
   totalCardTitle: {
     fontSize: FONT_SIZE.xs,
-    color: '#888',
     textAlign: 'center',
     marginBottom: SPACING.sm,
   },
@@ -708,7 +704,6 @@ const styles = StyleSheet.create({
   },
   totalCardSectionLabel: {
     fontSize: FONT_SIZE.xs,
-    color: '#999',
     marginBottom: SPACING.xs,
   },
   originalAmountsList: {
@@ -717,12 +712,10 @@ const styles = StyleSheet.create({
   originalAmountItem: {
     fontSize: FONT_SIZE.sm,
     fontWeight: '600',
-    color: '#555',
   },
   totalCardDivider: {
     width: 1,
     height: '100%',
-    backgroundColor: '#E0E0E0',
     marginHorizontal: SPACING.sm,
   },
   totalCardRight: {
@@ -749,13 +742,10 @@ const styles = StyleSheet.create({
   chartTitle: {
     fontSize: FONT_SIZE.md,
     fontWeight: '700',
-    color: '#333',
   },
   chartCurrency: {
     fontSize: FONT_SIZE.sm,
     fontWeight: '600',
-    color: '#1565C0',
-    backgroundColor: '#E3F2FD',
     paddingVertical: SPACING.xs - 2,
     paddingHorizontal: SPACING.sm,
     borderRadius: 4,
@@ -768,19 +758,16 @@ const styles = StyleSheet.create({
   },
   drillSubtitle: {
     fontSize: FONT_SIZE.xs,
-    color: '#999',
     marginTop: 2,
   },
   drillCloseBtn: {
     padding: SPACING.xs,
     borderRadius: 20,
-    backgroundColor: '#F5F5F5',
   },
   noData: {
     textAlign: 'center',
-    color: '#999',
     fontSize: FONT_SIZE.md,
     paddingVertical: SPACING.xl,
   },
-  axisLabel: { fontSize: 9, color: '#999' },
+  axisLabel: { fontSize: 9 },
 });
