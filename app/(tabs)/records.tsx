@@ -14,8 +14,10 @@ import { ScreenContainer } from '../../src/components/ScreenContainer';
 import { Card } from '../../src/components/Card';
 import { ErrorBoundary } from '../../src/components/ErrorBoundary';
 import { useTransactions, useDeleteTransaction } from '../../src/hooks/useTransactions';
+import { useCategories } from '../../src/hooks/useCategories';
 import { useTheme } from '../../src/hooks/useTheme';
-import { Transaction } from '../../src/types';
+import { Transaction, Category } from '../../src/types';
+import { UNCLASSIFIED_NAME } from '../../src/utils/categoryHelpers';
 import { SPACING, FONT_SIZE, BORDER_RADIUS } from '../../src/constants/spacing';
 import { logger } from '../../src/utils/logger';
 
@@ -25,13 +27,20 @@ function EditRecordsScreen() {
   const router = useRouter();
   const theme = useTheme();
   const transactions = useTransactions();
+  const categories = useCategories();
   const deleteMutation = useDeleteTransaction();
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'expense' | 'income'>('all');
   const [includeFuture, setIncludeFuture] = useState(false);
   const [showTime, setShowTime] = useState(false);
 
-  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const today = useMemo(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }, []);
 
   const filtered = useMemo(() => {
     let result = [...transactions];
@@ -103,13 +112,38 @@ function EditRecordsScreen() {
     }
   }
 
+  /** Look up the emoji icon for a transaction's category path */
+  function findIconForPath(path: string[], type: 'expense' | 'income'): string {
+    const roots = type === 'expense' ? categories.expense : categories.income;
+    let items: Category[] = roots;
+    let icon = '📁';
+    let parentIcon = '📁';
+    for (const name of path) {
+      const found = items.find((c) => c.name === name);
+      if (found) {
+        parentIcon = icon;
+        icon = found.icon ?? '📁';
+        items = found.children ?? [];
+      } else {
+        break;
+      }
+    }
+    // When path ends with "Uncategorized", use the parent's icon instead
+    if (path.length > 1 && path[path.length - 1] === UNCLASSIFIED_NAME) {
+      return parentIcon;
+    }
+    return icon;
+  }
+
   function renderTransaction({ item }: { item: Transaction }) {
     const isExpense = item.type === 'expense';
     const hasDetails = item.title || item.description;
+    const categoryIcon = findIconForPath(item.categoryPath, item.type);
     
     return (
       <Card style={[styles.txCard, !hasDetails && styles.txCardCompact]}>
         <View style={styles.txRow}>
+          <Text style={styles.txIcon}>{categoryIcon}</Text>
           <View style={styles.txInfo}>
             <View style={styles.txHeader}>
               <Text style={[styles.txAmount, { color: isExpense ? theme.error : theme.success }]}>
@@ -301,6 +335,7 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.md,
   },
   txRow: { flexDirection: 'row', alignItems: 'flex-start' },
+  txIcon: { fontSize: 20, marginRight: SPACING.sm, marginTop: 2 },
   txInfo: { flex: 1 },
   txHeader: {
     flexDirection: 'row',

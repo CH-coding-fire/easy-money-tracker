@@ -22,6 +22,7 @@ interface ButtonProps {
   loading?: boolean;
   icon?: React.ReactNode;
   style?: ViewStyle;
+  textStyle?: TextStyle;
 }
 
 const SIZES: Record<Size, { paddingV: number; paddingH: number; fontSize: number }> = {
@@ -39,6 +40,7 @@ export function Button({
   loading = false,
   icon,
   style,
+  textStyle,
 }: ButtonProps) {
   const theme = useTheme();
   const sz = SIZES[size];
@@ -88,6 +90,7 @@ export function Button({
               styles.text,
               { color: disabled ? theme.text.tertiary : color.text, fontSize: sz.fontSize },
               icon ? { marginLeft: SPACING.xs } : undefined,
+              textStyle,
             ]}
           >
             {title}

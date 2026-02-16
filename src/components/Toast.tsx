@@ -1,7 +1,7 @@
 // ── Toast Component ────────────────────────────────────────────────────────
 // A non-intrusive bottom toast that fades out quickly
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Animated, Dimensions, TouchableOpacity } from 'react-native';
 import { SPACING, FONT_SIZE } from '../constants/spacing';
 import { useTheme } from '../hooks/useTheme';
 
@@ -16,6 +16,31 @@ export function Toast({ message, type = 'success', duration = 2000, onHide }: To
   const theme = useTheme();
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(20)).current;
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const fadeOut = () => {
+    // Clear any existing timer
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+
+    // Fade out animation
+    Animated.parallel([
+      Animated.timing(opacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(translateY, {
+        toValue: 20,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      onHide?.();
+    });
+  };
 
   useEffect(() => {
     // Slide up and fade in
@@ -33,24 +58,15 @@ export function Toast({ message, type = 'success', duration = 2000, onHide }: To
     ]).start();
 
     // After duration, fade out quickly
-    const timer = setTimeout(() => {
-      Animated.parallel([
-        Animated.timing(opacity, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(translateY, {
-          toValue: 20,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        onHide?.();
-      });
+    timerRef.current = setTimeout(() => {
+      fadeOut();
     }, duration);
 
-    return () => clearTimeout(timer);
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+    };
   }, [message, duration, onHide]);
 
   const backgroundColor =
@@ -61,18 +77,23 @@ export function Toast({ message, type = 'success', duration = 2000, onHide }: To
       : theme.primary;
 
   return (
-    <Animated.View
-      style={[
-        styles.container,
-        {
-          opacity,
-          transform: [{ translateY }],
-          backgroundColor,
-        },
-      ]}
+    <TouchableOpacity
+      activeOpacity={0.9}
+      onPress={fadeOut}
     >
-      <Text style={styles.message}>{message}</Text>
-    </Animated.View>
+      <Animated.View
+        style={[
+          styles.container,
+          {
+            opacity,
+            transform: [{ translateY }],
+            backgroundColor,
+          },
+        ]}
+      >
+        <Text style={styles.message}>{message}</Text>
+      </Animated.View>
+    </TouchableOpacity>
   );
 }
 

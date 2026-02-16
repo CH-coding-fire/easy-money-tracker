@@ -95,6 +95,7 @@ export interface Settings {
   frequentExpenseCategories: string[][]; // paths like [["Food","Delivery"]]
   frequentIncomeCategories: string[][];
   themeMode: ThemeMode;
+  autoFocusCategorySearch: boolean;
 }
 
 export interface AppData {

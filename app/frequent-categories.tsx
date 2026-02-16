@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   FlatList,
+  TextInput,
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { ScreenContainer } from '../src/components/ScreenContainer';
@@ -18,23 +19,36 @@ import { Category, TransactionType } from '../src/types';
 import { SPACING, FONT_SIZE, BORDER_RADIUS } from '../src/constants/spacing';
 import { logger } from '../src/utils/logger';
 import { useUIStore } from '../src/store/uiStore';
+import { UNCLASSIFIED_NAME } from '../src/utils/categoryHelpers';
 
 const TAG = 'FrequentCategoriesScreen';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-/** Flatten the category tree into a list of { path, icon } tuples. */
+/**
+ * Display label for a frequent category path.
+ * When the path ends with "Uncategorized", show the parent name instead
+ * (e.g. ["Utilities", "Uncategorized"] → "Utilities").
+ */
+function frequentDisplayLabel(path: string[]): string {
+  if (path.length > 1 && path[path.length - 1] === UNCLASSIFIED_NAME) {
+    return path[path.length - 2];
+  }
+  return path[path.length - 1];
+}
+
+/** Flatten the category tree into a list of { path, icon, hasChildren } tuples. */
 function flattenCategories(
   cats: Category[],
   parentPath: string[] = [],
-): { path: string[]; icon: string }[] {
-  const result: { path: string[]; icon: string }[] = [];
+): { path: string[]; icon: string; hasChildren: boolean }[] {
+  const result: { path: string[]; icon: string; hasChildren: boolean }[] = [];
   for (const cat of cats) {
     const currentPath = [...parentPath, cat.name];
-    // Add this node (any level is selectable)
-    result.push({ path: currentPath, icon: cat.icon ?? '📁' });
-    if (cat.children && cat.children.length > 0) {
-      result.push(...flattenCategories(cat.children, currentPath));
+    const hasChildren = !!(cat.children && cat.children.length > 0);
+    result.push({ path: currentPath, icon: cat.icon ?? '📁', hasChildren });
+    if (hasChildren) {
+      result.push(...flattenCategories(cat.children!, currentPath));
     }
   }
   return result;
@@ -42,6 +56,108 @@ function flattenCategories(
 
 function pathKey(path: string[]): string {
   return path.join(' > ');
+}
+
+// ── Tree row component ──────────────────────────────────────────────────────
+
+function CategoryTreeRow({
+  cat,
+  parentPath,
+  depth,
+  expandedIds,
+  toggleExpand,
+  isFrequent,
+  toggleFrequent,
+  theme,
+}: {
+  cat: Category;
+  parentPath: string[];
+  depth: number;
+  expandedIds: Set<string>;
+  toggleExpand: (id: string) => void;
+  isFrequent: (path: string[]) => boolean;
+  toggleFrequent: (path: string[]) => void;
+  theme: ReturnType<typeof useTheme>;
+}) {
+  const currentPath = [...parentPath, cat.name];
+  const hasChildren = !!(cat.children && cat.children.length > 0);
+  const isExpanded = expandedIds.has(cat.id);
+  const selected = isFrequent(currentPath);
+
+  return (
+    <>
+      <View style={[
+        styles.catRow,
+        { backgroundColor: theme.cardBackground },
+        !hasChildren && selected && { backgroundColor: `${theme.primary}08` },
+        { paddingLeft: SPACING.md + depth * 20 },
+      ]}>
+        <View style={styles.expandPlaceholder} />
+
+        <TouchableOpacity
+          style={styles.catRowInner}
+          onPress={() => {
+            if (hasChildren) {
+              // Parent categories with subcategories cannot be directly selected;
+              // expand so the user picks a specific subcategory instead.
+              toggleExpand(cat.id);
+            } else {
+              toggleFrequent(currentPath);
+            }
+          }}
+          activeOpacity={0.6}
+        >
+          <Text style={styles.catIcon}>{cat.icon ?? '📁'}</Text>
+          <View style={styles.catInfo}>
+            <Text
+              style={[
+                styles.catName,
+                { color: theme.text.primary },
+                !hasChildren && selected && { fontWeight: '700', color: theme.primary },
+              ]}
+              numberOfLines={1}
+            >
+              {cat.name}
+            </Text>
+            {hasChildren && (
+              <Text style={[styles.catSubCount, { color: theme.text.tertiary }]}>
+                {cat.children!.length} subcategories — expand to select
+              </Text>
+            )}
+          </View>
+          {hasChildren ? (
+            <Ionicons
+              name="chevron-down"
+              size={20}
+              color={theme.text.tertiary}
+            />
+          ) : (
+            <Ionicons
+              name={selected ? 'checkmark-circle' : 'add-circle-outline'}
+              size={22}
+              color={selected ? theme.primary : theme.text.tertiary}
+            />
+          )}
+        </TouchableOpacity>
+      </View>
+      <View style={[styles.separator, { backgroundColor: theme.divider }]} />
+
+      {/* Render children if expanded */}
+      {isExpanded && hasChildren && cat.children!.map((child) => (
+        <CategoryTreeRow
+          key={child.id}
+          cat={child}
+          parentPath={currentPath}
+          depth={depth + 1}
+          expandedIds={expandedIds}
+          toggleExpand={toggleExpand}
+          isFrequent={isFrequent}
+          toggleFrequent={toggleFrequent}
+          theme={theme}
+        />
+      ))}
+    </>
+  );
 }
 
 // ── Main component ─────────────────────────────────────────────────────────
@@ -54,6 +170,8 @@ function FrequentCategoriesScreen() {
   const theme = useTheme();
 
   const [catType, setCatType] = useState<TransactionType>('expense');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   const currentCategories = catType === 'expense' ? categories.expense : categories.income;
 
@@ -67,7 +185,7 @@ function FrequentCategoriesScreen() {
       ? 'frequentExpenseCategories'
       : 'frequentIncomeCategories';
 
-  // Flat list of all categories for selection
+  // Flat list of all categories for search
   const allFlat = useMemo(
     () => flattenCategories(currentCategories),
     [currentCategories],
@@ -82,6 +200,28 @@ function FrequentCategoriesScreen() {
     (path: string[]) => frequentKeys.has(pathKey(path)),
     [frequentKeys],
   );
+
+  const isSearching = searchQuery.trim().length > 0;
+
+  // Filter flattened categories by search keyword
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const q = searchQuery.trim().toLowerCase();
+    return allFlat.filter(
+      ({ path }) =>
+        path[path.length - 1].toLowerCase().includes(q) ||
+        path.join(' > ').toLowerCase().includes(q),
+    );
+  }, [searchQuery, allFlat]);
+
+  function toggleExpand(id: string) {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   function toggleFrequent(path: string[]) {
     const key = pathKey(path);
@@ -107,14 +247,21 @@ function FrequentCategoriesScreen() {
   function findIcon(path: string[]): string {
     let items = currentCategories;
     let icon = '📁';
+    let parentIcon = '📁';
     for (const name of path) {
       const found = items.find((c) => c.name === name);
       if (found) {
+        parentIcon = icon;
         icon = found.icon ?? '📁';
         items = found.children ?? [];
       } else {
         break;
       }
+    }
+    // When path ends with "Uncategorized", use the parent's icon instead
+    // (e.g. Food > Uncategorized should show 🍔, not 📁)
+    if (path.length > 1 && path[path.length - 1] === UNCLASSIFIED_NAME) {
+      return parentIcon;
     }
     return icon;
   }
@@ -129,7 +276,11 @@ function FrequentCategoriesScreen() {
             { label: 'Income', value: 'income' },
           ]}
           selected={catType}
-          onSelect={setCatType}
+          onSelect={(v) => {
+            setCatType(v);
+            setExpandedIds(new Set());
+            setSearchQuery('');
+          }}
         />
 
         {/* Selected frequent categories */}
@@ -146,7 +297,7 @@ function FrequentCategoriesScreen() {
               <View key={pathKey(path)} style={[styles.chip, { backgroundColor: `${theme.primary}20` }]}>
                 <Text style={styles.chipIcon}>{findIcon(path)}</Text>
                 <Text style={[styles.chipLabel, { color: theme.primary }]} numberOfLines={1}>
-                  {path[path.length - 1]}
+                  {frequentDisplayLabel(path)}
                 </Text>
                 <TouchableOpacity
                   style={styles.chipRemove}
@@ -171,52 +322,113 @@ function FrequentCategoriesScreen() {
           All Categories
         </Text>
         <Text style={[styles.sectionHint, { color: theme.text.tertiary }]}>
-          Tap to toggle as frequent. Shows full path for subcategories.
+          Tap ▶ to expand subcategories. Tap + to toggle as frequent.
         </Text>
+
+        {/* Search bar */}
+        <View style={[styles.searchBar, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
+          <Ionicons name="search" size={16} color={theme.text.tertiary} style={{ marginRight: SPACING.xs }} />
+          <TextInput
+            style={[styles.searchInput, { color: theme.text.primary }]}
+            placeholder="Search categories..."
+            placeholderTextColor={theme.text.tertiary}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoCorrect={false}
+            clearButtonMode="while-editing"
+            returnKeyType="search"
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name="close-circle" size={16} color={theme.text.tertiary} />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
-      {/* Scrollable category list */}
-      <FlatList
-        data={allFlat}
-        keyExtractor={(item) => pathKey(item.path)}
-        contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => {
-          const selected = isFrequent(item.path);
-          const depth = item.path.length - 1;
-          return (
-            <TouchableOpacity
-              style={[
-                styles.catRow,
-                { backgroundColor: theme.cardBackground },
-                selected && { backgroundColor: `${theme.primary}08` },
-                { paddingLeft: SPACING.md + depth * 20 },
-              ]}
-              onPress={() => toggleFrequent(item.path)}
-              activeOpacity={0.6}
-            >
-              <Text style={styles.catIcon}>{item.icon}</Text>
-              <View style={styles.catInfo}>
-                <Text
-                  style={[
-                    styles.catName,
-                    { color: theme.text.primary },
-                    selected && { fontWeight: '700', color: theme.primary },
-                  ]}
-                  numberOfLines={1}
-                >
-                  {item.path.length > 1 ? item.path.join(' > ') : item.path[0]}
-                </Text>
-              </View>
-              <Ionicons
-                name={selected ? 'checkmark-circle' : 'add-circle-outline'}
-                size={22}
-                color={selected ? theme.primary : theme.text.tertiary}
-              />
-            </TouchableOpacity>
-          );
-        }}
-        ItemSeparatorComponent={() => <View style={[styles.separator, { backgroundColor: theme.divider }]} />}
-      />
+      {/* Category list: search results (flat) or tree view */}
+      {isSearching ? (
+        <FlatList
+          data={searchResults}
+          keyExtractor={(item) => pathKey(item.path)}
+          contentContainerStyle={styles.listContent}
+          renderItem={({ item }) => {
+            const selected = !item.hasChildren && isFrequent(item.path);
+            return (
+              <TouchableOpacity
+                style={[
+                  styles.catRow,
+                  { backgroundColor: theme.cardBackground, paddingLeft: SPACING.md },
+                  selected && { backgroundColor: `${theme.primary}08` },
+                ]}
+                onPress={() => {
+                  if (!item.hasChildren) {
+                    toggleFrequent(item.path);
+                  }
+                  // Parent categories cannot be selected — user should pick a subcategory
+                }}
+                activeOpacity={item.hasChildren ? 1 : 0.6}
+              >
+                <View style={styles.expandPlaceholder} />
+                <Text style={styles.catIcon}>{item.icon}</Text>
+                <View style={styles.catInfo}>
+                  <Text
+                    style={[
+                      styles.catName,
+                      { color: item.hasChildren ? theme.text.tertiary : theme.text.primary },
+                      selected && { fontWeight: '700', color: theme.primary },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {item.path[item.path.length - 1]}
+                  </Text>
+                  {item.path.length > 1 && (
+                    <Text style={[styles.catPathHint, { color: theme.text.tertiary }]} numberOfLines={1}>
+                      {item.path.slice(0, -1).join(' > ')}
+                    </Text>
+                  )}
+                  {item.hasChildren && (
+                    <Text style={[styles.catPathHint, { color: theme.text.tertiary }]} numberOfLines={1}>
+                      Has subcategories — select a subcategory instead
+                    </Text>
+                  )}
+                </View>
+                {!item.hasChildren && (
+                  <Ionicons
+                    name={selected ? 'checkmark-circle' : 'add-circle-outline'}
+                    size={22}
+                    color={selected ? theme.primary : theme.text.tertiary}
+                  />
+                )}
+              </TouchableOpacity>
+            );
+          }}
+          ItemSeparatorComponent={() => <View style={[styles.separator, { backgroundColor: theme.divider }]} />}
+          ListEmptyComponent={
+            <View style={styles.emptySearch}>
+              <Text style={[styles.emptySearchText, { color: theme.text.tertiary }]}>
+                No categories match "{searchQuery}"
+              </Text>
+            </View>
+          }
+        />
+      ) : (
+        <ScrollView contentContainerStyle={styles.listContent}>
+          {currentCategories.map((cat) => (
+            <CategoryTreeRow
+              key={cat.id}
+              cat={cat}
+              parentPath={[]}
+              depth={0}
+              expandedIds={expandedIds}
+              toggleExpand={toggleExpand}
+              isFrequent={isFrequent}
+              toggleFrequent={toggleFrequent}
+              theme={theme}
+            />
+          ))}
+        </ScrollView>
+      )}
     </ScreenContainer>
   );
 }
@@ -247,6 +459,21 @@ const styles = StyleSheet.create({
   sectionHint: {
     fontSize: FONT_SIZE.xs,
     marginBottom: SPACING.sm,
+  },
+  // ── Search bar ──
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    marginTop: SPACING.xs,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: FONT_SIZE.sm,
+    paddingVertical: SPACING.xs,
   },
   // ── Chips (selected frequent) ──
   chipRow: {
@@ -291,7 +518,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: SPACING.sm,
-    paddingHorizontal: SPACING.md,
+    paddingRight: SPACING.md,
+  },
+  catRowInner: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  expandBtn: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  expandPlaceholder: {
+    width: 28,
   },
   catIcon: {
     fontSize: 20,
@@ -303,8 +544,23 @@ const styles = StyleSheet.create({
   catName: {
     fontSize: FONT_SIZE.md,
   },
+  catSubCount: {
+    fontSize: FONT_SIZE.xs,
+    marginTop: 1,
+  },
+  catPathHint: {
+    fontSize: FONT_SIZE.xs,
+    marginTop: 1,
+  },
   separator: {
     height: 1,
     marginLeft: 48,
+  },
+  emptySearch: {
+    alignItems: 'center',
+    paddingVertical: SPACING.xxxl,
+  },
+  emptySearchText: {
+    fontSize: FONT_SIZE.md,
   },
 });

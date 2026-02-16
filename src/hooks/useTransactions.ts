@@ -6,6 +6,7 @@ import {
   addTransactions as addTxBatch,
   updateTransaction as updateTx,
   deleteTransaction as deleteTx,
+  deleteAllTransactions as deleteAllTx,
 } from '../services/storage';
 import { Transaction } from '../types';
 import { logger } from '../utils/logger';
@@ -82,6 +83,21 @@ export function useDeleteTransaction() {
     },
     onError: (err) => {
       logger.error(TAG, 'useDeleteTransaction: failed', err);
+    },
+  });
+}
+
+export function useDeleteAllTransactions() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => deleteAllTx(),
+    onSuccess: (data) => {
+      logger.info(TAG, 'useDeleteAllTransactions: invalidating cache');
+      qc.setQueryData(QUERY_KEY, data);
+      qc.invalidateQueries({ queryKey: QUERY_KEY });
+    },
+    onError: (err) => {
+      logger.error(TAG, 'useDeleteAllTransactions: failed', err);
     },
   });
 }

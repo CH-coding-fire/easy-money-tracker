@@ -45,7 +45,7 @@ import { todayISO, nowISO, formatISODate, generateMultiDates } from '../../src/u
 import { logger } from '../../src/utils/logger';
 import { getRandomFinancialQuote } from '../../src/constants/financialQuotes';
 
-const TAG = 'AddExpenseScreen';
+const TAG = 'AddIncomeScreen';
 
 const txSchema = z.object({
   amount: z.string().min(1, 'Amount is required').refine(
@@ -58,7 +58,7 @@ const txSchema = z.object({
 
 type TxFormData = z.infer<typeof txSchema>;
 
-function AddExpenseScreen() {
+function AddIncomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const theme = useTheme();
@@ -84,10 +84,10 @@ function AddExpenseScreen() {
     }, 300);
   }, []);
 
-  const transactionType: TransactionType = 'expense';
+  const transactionType: TransactionType = 'income';
   const { showToast } = useUIStore();
 
-  // Auto-focus amount input when the Add tab is focused (triggers numpad on mobile)
+  // Auto-focus amount input when the tab is focused (triggers numpad on mobile)
   useFocusEffect(
     useCallback(() => {
       const timer = setTimeout(() => {
@@ -144,12 +144,8 @@ function AddExpenseScreen() {
 
   const canSave = amountEntered && categorySelected;
 
-  const currentCategories = transactionType === 'expense'
-    ? categories.expense
-    : categories.income;
-  const frequentCats = transactionType === 'expense'
-    ? settings.frequentExpenseCategories
-    : settings.frequentIncomeCategories;
+  const currentCategories = categories.income;
+  const frequentCats = settings.frequentIncomeCategories;
 
   async function quickSave(path: string[]) {
     const isValid = await trigger('amount');
@@ -272,8 +268,8 @@ function AddExpenseScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.titleRow}>
-            <Ionicons name="arrow-down-circle" size={28} color={theme.error} />
-            <Text style={[styles.screenTitle, { color: theme.text.primary }]}>Add Expense</Text>
+            <Ionicons name="arrow-up-circle" size={28} color={theme.success} />
+            <Text style={[styles.screenTitle, { color: theme.text.primary }]}>Add Income</Text>
             <View style={{ flex: 1 }} />
             <View style={styles.modeToggle}>
               <Text style={[styles.modeToggleText, { color: isQuickMode ? theme.primary : theme.text.tertiary }]}>
@@ -477,7 +473,7 @@ function AddExpenseScreen() {
                   render={({ field: { onChange, onBlur, value } }) => (
                     <Input
                       label="Title (optional)"
-                      placeholder="e.g. Lunch at cafe"
+                      placeholder="e.g. Monthly salary"
                       value={value}
                       onChangeText={(v) => {
                         onChange(v);
@@ -630,10 +626,10 @@ function AddExpenseScreen() {
   );
 }
 
-export default function AddExpenseWithBoundary() {
+export default function AddIncomeWithBoundary() {
   return (
-    <ErrorBoundary screenName="AddExpense">
-      <AddExpenseScreen />
+    <ErrorBoundary screenName="AddIncome">
+      <AddIncomeScreen />
     </ErrorBoundary>
   );
 }

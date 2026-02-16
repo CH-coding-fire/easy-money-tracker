@@ -16,7 +16,7 @@ function leaf(name: string, icon?: string): Category {
   return { id: generateId(), name, icon };
 }
 
-// Raw categories WITHOUT explicit "Unclassified" entries.
+// Raw categories WITHOUT explicit "Uncategorized" entries.
 // ensureUnclassified() will inject them at every level automatically.
 const RAW_CATEGORIES: CategoryGroup = {
   expense: [
@@ -128,7 +128,7 @@ const RAW_CATEGORIES: CategoryGroup = {
   ],
 };
 
-// Apply ensureUnclassified so "Unclassified" is auto-injected at every level
+// Apply ensureUnclassified so "Uncategorized" is auto-injected at every level
 export const DEFAULT_CATEGORIES: CategoryGroup = {
   expense: ensureUnclassified(RAW_CATEGORIES.expense),
   income: ensureUnclassified(RAW_CATEGORIES.income),

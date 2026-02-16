@@ -46,7 +46,7 @@ Primary job-to-be-done: An app, that user can easy record expense and income, an
         - 3th row: If user don't use the frequent category, A list of category, that user can choose. There can be three levels of categories. 
           E.g. Level 1 → Level 2 → Level 3
           Then, the user can first select the main level, then upon clicking, there can be two outcome
-          - If the user is using "main-level" mode, then clicking the level 1 tag, will just be selected (btw, the default is Unclassified)
+          - If the user is using "main-level" mode, then clicking the level 1 tag, will just be selected (btw, the default is Uncategorized)
           - If the user is using "main-level+secoond-level" mode, then clicking the level 1 tag, a page jump out and have user to choose the level 2
         - 4th row: Date of expense/income, default to be today
         - 5th row: one off expense/income or recurring, default is one-off
@@ -96,68 +96,68 @@ Primary job-to-be-done: An app, that user can easy record expense and income, an
   - Data: Default category as below, each has a icon:
         Expense category:
           Food
-          Grocery / Restaurant / Coffee / Snack / Delivery / Unclassified
+          Grocery / Restaurant / Coffee / Snack / Delivery / Uncategorized
 
           Housing
-          Rent / Mortgage / Property Tax / Insurance / Maintenance / Management Fee / Moving Expense / Unclassified
+          Rent / Mortgage / Property Tax / Insurance / Maintenance / Management Fee / Moving Expense / Uncategorized
 
           Utility
-          Home Internet / Mobile Plan / Water / Electricity / Gas / Trash / Heating / Unclassified
+          Home Internet / Mobile Plan / Water / Electricity / Gas / Trash / Heating / Uncategorized
 
           Transportation
-          Public Transport / Taxi / Fuel / Maintenance / Insurance / Payment / Bike / Parking / Toll / Flight / Unclassified
+          Public Transport / Taxi / Fuel / Maintenance / Insurance / Payment / Bike / Parking / Toll / Flight / Uncategorized
 
           Medical
-          General Practitioner / Specialist / Dentist / Pharmacist / Physiotherapist / Psychotherapist / Psychiatrist / Alternative Medicine / Checkup / Unclassified
+          General Practitioner / Specialist / Dentist / Pharmacist / Physiotherapist / Psychotherapist / Psychiatrist / Alternative Medicine / Checkup / Uncategorized
 
           Insurance
-          Life Insurance / Medical Insurance / Critical Illness Insurance / Unclassified
+          Life Insurance / Medical Insurance / Critical Illness Insurance / Uncategorized
 
           Finance/Tax/Government
-          Foreign Exchange Fee / Transaction Fee / Tax / Fine / License / Unclassified
+          Foreign Exchange Fee / Transaction Fee / Tax / Fine / License / Uncategorized
 
           Social
-          Drink & Bar / Restaurant / Gift / Party & Event / Networking / Unclassified
+          Drink & Bar / Restaurant / Gift / Party & Event / Networking / Uncategorized
 
           Love Life
           Date / Restaurant / Hotel / Gift / Partner Support / Adult Service / Sexual Health
 
           Education
-          Tuition (School) / Private Tutoring / Course / Learning Material / Certification / Unclassified
+          Tuition (School) / Private Tutoring / Course / Learning Material / Certification / Uncategorized
 
           Fitness/Health
-          Membership / Class / Coaching / Equipment / Supplement / Event / Unclassified
+          Membership / Class / Coaching / Equipment / Supplement / Event / Uncategorized
 
           Substance
-          Alcohol / Tobacco / Cannabis / Psychedelic / Stimulant / Unclassified
+          Alcohol / Tobacco / Cannabis / Psychedelic / Stimulant / Uncategorized
 
           Entertainment
-          Streaming / Music / Gaming / Movie / Book / Hobby / Outdoor / Gardening / Unclassified
+          Streaming / Music / Gaming / Movie / Book / Hobby / Outdoor / Gardening / Uncategorized
 
           Shopping
-          Electronic / Kitchenware / Stationery / Accessory / Home Decor / Merchandise / Tool / Unclassified
+          Electronic / Kitchenware / Stationery / Accessory / Home Decor / Merchandise / Tool / Uncategorized
 
           Beauty
-          Makeup / Skincare / Haircare / Grooming / Beauty Tool / Treatment / Nail / Fragrance / Unclassified
+          Makeup / Skincare / Haircare / Grooming / Beauty Tool / Treatment / Nail / Fragrance / Uncategorized
 
           Fashion
-          Clothing / Shoe / Bag / Accessory / Jewelry / Formalwear / Tailoring & Alteration / Laundry & Dry Cleaning / Unclassified
+          Clothing / Shoe / Bag / Accessory / Jewelry / Formalwear / Tailoring & Alteration / Laundry & Dry Cleaning / Uncategorized
 
           Digital Tool
-          Software / AI Tool / Cloud / VPN / Hosting / Unclassified
+          Software / AI Tool / Cloud / VPN / Hosting / Uncategorized
 
           Service
-          Cleaning / Legal Service / Financial Service / Unclassified
+          Cleaning / Legal Service / Financial Service / Uncategorized
 
           Pet
-          Food / Veterinary Care / Supply / Grooming / Training / Toy / Insurance / Unclassified
+          Food / Veterinary Care / Supply / Grooming / Training / Toy / Insurance / Uncategorized
 
           Donation
 
           Family/Children
-          Education / Daycare / Extracurricular Activity / Gift / Supply / Unclassified
+          Education / Daycare / Extracurricular Activity / Gift / Supply / Uncategorized
 
-          Unclassified
+          Uncategorized
                     
         Income category
           - Salary

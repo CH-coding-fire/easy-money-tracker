@@ -5,11 +5,80 @@ import { DEFAULT_CATEGORIES } from '../constants/categories';
 import { DEFAULT_CURRENCY } from '../constants/currencies';
 import { logger } from '../utils/logger';
 import { nowISO } from '../utils/dateHelpers';
-import { ensureUnclassified } from '../utils/categoryHelpers';
+import { ensureUnclassified, UNCLASSIFIED_NAME } from '../utils/categoryHelpers';
 
 const STORAGE_KEY = '@easy_money_tracker';
 const SCHEMA_VERSION = 1;
 const TAG = 'Storage';
+
+// ── Migration helpers ──────────────────────────────────────────────────────
+
+/**
+ * Migrate old "Unclassified" strings to "Uncategorized" throughout the app data.
+ * This handles the rename from "Unclassified" to "Uncategorized".
+ */
+function migrateUnclassifiedToUncategorized(data: AppData): AppData {
+  const OLD_NAME = 'Unclassified';
+  const NEW_NAME = UNCLASSIFIED_NAME;
+  
+  if (OLD_NAME === NEW_NAME) return data; // No migration needed
+  
+  let categoriesMigrated = 0;
+  let transactionsMigrated = 0;
+  
+  // Helper to recursively rename categories
+  function renameCategoryInTree(categories: any[]): any[] {
+    return categories.map(cat => {
+      const newCat = { ...cat };
+      if (newCat.name === OLD_NAME) {
+        newCat.name = NEW_NAME;
+        categoriesMigrated++;
+      }
+      if (newCat.children) {
+        newCat.children = renameCategoryInTree(newCat.children);
+      }
+      return newCat;
+    });
+  }
+  
+  // Migrate categories
+  data.categories = {
+    expense: renameCategoryInTree(data.categories.expense ?? []),
+    income: renameCategoryInTree(data.categories.income ?? []),
+  };
+  
+  // Migrate transactions
+  data.transactions = data.transactions.map(tx => {
+    const newPath = tx.categoryPath.map(name => 
+      name === OLD_NAME ? NEW_NAME : name
+    );
+    if (JSON.stringify(newPath) !== JSON.stringify(tx.categoryPath)) {
+      transactionsMigrated++;
+    }
+    return { ...tx, categoryPath: newPath };
+  });
+  
+  // Migrate frequent categories in settings
+  if (data.settings.frequentExpenseCategories) {
+    data.settings.frequentExpenseCategories = data.settings.frequentExpenseCategories.map(path =>
+      path.map(name => name === OLD_NAME ? NEW_NAME : name)
+    );
+  }
+  if (data.settings.frequentIncomeCategories) {
+    data.settings.frequentIncomeCategories = data.settings.frequentIncomeCategories.map(path =>
+      path.map(name => name === OLD_NAME ? NEW_NAME : name)
+    );
+  }
+  
+  if (categoriesMigrated > 0 || transactionsMigrated > 0) {
+    logger.info(TAG, 'migrateUnclassifiedToUncategorized: completed', {
+      categoriesMigrated,
+      transactionsMigrated,
+    });
+  }
+  
+  return data;
+}
 
 // ── Default state ──────────────────────────────────────────────────────────
 
@@ -27,6 +96,7 @@ export function getDefaultSettings(): Settings {
     frequentExpenseCategories: [],
     frequentIncomeCategories: [],
     themeMode: 'light',
+    autoFocusCategorySearch: true,
   };
 }
 
@@ -49,7 +119,7 @@ export async function loadAppData(): Promise<AppData> {
       logger.info(TAG, 'loadAppData: no data found, returning defaults');
       return getDefaultAppData();
     }
-    const parsed: AppData = JSON.parse(raw);
+    let parsed: AppData = JSON.parse(raw);
     // Basic validation
     if (!parsed.schemaVersion || !Array.isArray(parsed.transactions)) {
       logger.warn(TAG, 'loadAppData: corrupted data, returning defaults', {
@@ -58,7 +128,11 @@ export async function loadAppData(): Promise<AppData> {
       });
       return getDefaultAppData();
     }
-    // Ensure "Unclassified" integrity on every load
+    
+    // Run migrations
+    parsed = migrateUnclassifiedToUncategorized(parsed);
+    
+    // Ensure "Uncategorized" integrity on every load
     parsed.categories = {
       expense: ensureUnclassified(parsed.categories.expense ?? []),
       income: ensureUnclassified(parsed.categories.income ?? []),
@@ -134,12 +208,22 @@ export async function deleteTransaction(id: string): Promise<AppData> {
   return data;
 }
 
+export async function deleteAllTransactions(): Promise<AppData> {
+  logger.warn(TAG, 'deleteAllTransactions: removing all transactions');
+  const data = await loadAppData();
+  const count = data.transactions.length;
+  data.transactions = [];
+  await saveAppData(data);
+  logger.info(TAG, 'deleteAllTransactions: complete', { deletedCount: count });
+  return data;
+}
+
 // ── Categories helpers ─────────────────────────────────────────────────────
 
 export async function saveCategories(categories: CategoryGroup): Promise<AppData> {
   logger.info(TAG, 'saveCategories: start');
   const data = await loadAppData();
-  // Enforce "Unclassified" at every level before persisting
+  // Enforce "Uncategorized" at every level before persisting
   data.categories = {
     expense: ensureUnclassified(categories.expense),
     income: ensureUnclassified(categories.income),

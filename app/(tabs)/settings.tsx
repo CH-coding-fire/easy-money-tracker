@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Modal,
   FlatList,
+  TextInput,
 } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import * as DocumentPicker from 'expo-document-picker';
@@ -28,6 +29,7 @@ import { SPACING, FONT_SIZE, BORDER_RADIUS } from '../../src/constants/spacing';
 import { logger } from '../../src/utils/logger';
 import { useQueryClient } from '@tanstack/react-query';
 import { useUIStore } from '../../src/store/uiStore';
+import { useDeleteAllTransactions } from '../../src/hooks/useTransactions';
 
 const TAG = 'SettingsScreen';
 
@@ -38,12 +40,15 @@ function SettingsScreen() {
   const qc = useQueryClient();
   const { showToast } = useUIStore();
   const theme = useTheme();
+  const deleteAllMutation = useDeleteAllTransactions();
 
   const scrollRef = useRef<ScrollView>(null);
   const [showLangPicker, setShowLangPicker] = useState(false);
   const [showThemePicker, setShowThemePicker] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetInput, setResetInput] = useState('');
   const prevDebugMode = useRef(settings.debugMode);
 
   async function handleExport() {
@@ -97,6 +102,24 @@ function SettingsScreen() {
     logger.info(TAG, 'Theme changed', { mode });
     saveMutation.mutate({ themeMode: mode as any });
     setShowThemePicker(false);
+  }
+
+  async function handleResetRecords() {
+    if (resetInput !== 'RESET') {
+      showToast('Please type "RESET" to confirm', 'error');
+      return;
+    }
+    
+    try {
+      await deleteAllMutation.mutateAsync();
+      logger.info(TAG, 'All transaction records deleted');
+      showToast('All transaction records have been deleted', 'success');
+      setShowResetModal(false);
+      setResetInput('');
+    } catch (err: any) {
+      logger.error(TAG, 'Failed to delete all records', err);
+      showToast(`Failed to delete records: ${err.message}`, 'error');
+    }
   }
 
   // Scroll to bottom when debug mode is toggled on
@@ -217,6 +240,25 @@ function SettingsScreen() {
               style={{ flex: 1 }}
             />
           </View>
+        </Card>
+
+        {/* Reset Records - Danger Zone */}
+        <Card style={styles.settingCard}>
+          <Text style={[styles.settingLabel, { color: theme.text.secondary }]}>Danger Zone</Text>
+          <Text style={[styles.dataDesc, { color: theme.text.secondary }]}>
+            Permanently delete all transaction records. Categories will be preserved.
+          </Text>
+          <Button
+            title="⚠️ Reset All Records"
+            variant="outline"
+            size="sm"
+            onPress={() => setShowResetModal(true)}
+            style={{ 
+              borderColor: '#dc2626',
+              marginTop: SPACING.xs,
+            }}
+            textStyle={{ color: '#dc2626', fontWeight: '700' }}
+          />
         </Card>
 
         {/* Debug mode toggle */}
@@ -346,6 +388,74 @@ function SettingsScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Reset confirmation modal */}
+      <Modal visible={showResetModal} animationType="slide" transparent>
+        <View style={[styles.modalOverlay, { backgroundColor: theme.overlay }]}>
+          <View style={[styles.modalContent, { backgroundColor: theme.cardBackground }]}>
+            <View style={styles.resetModalHeader}>
+              <Ionicons name="warning" size={48} color="#dc2626" />
+              <Text style={[styles.modalTitle, { color: theme.text.primary, marginTop: SPACING.md }]}>
+                Reset All Records?
+              </Text>
+            </View>
+            
+            <Text style={[styles.resetWarning, { color: theme.text.secondary }]}>
+              This action will permanently delete ALL transaction records. Your categories will be preserved.
+            </Text>
+            
+            <Text style={[styles.resetWarning, { color: theme.text.secondary, marginTop: SPACING.md }]}>
+              This action cannot be undone!
+            </Text>
+            
+            <Text style={[styles.resetInstruction, { color: theme.text.primary, marginTop: SPACING.lg }]}>
+              Type <Text style={{ fontWeight: '700', color: '#dc2626' }}>RESET</Text> to confirm:
+            </Text>
+            
+            <TextInput
+              style={[
+                styles.resetInput,
+                {
+                  backgroundColor: theme.background,
+                  borderColor: theme.border,
+                  color: theme.text.primary,
+                },
+              ]}
+              value={resetInput}
+              onChangeText={setResetInput}
+              placeholder="Type RESET here"
+              placeholderTextColor={theme.text.tertiary}
+              autoCapitalize="characters"
+              autoCorrect={false}
+            />
+            
+            <View style={styles.resetButtonRow}>
+              <Button
+                title="Cancel"
+                variant="ghost"
+                onPress={() => {
+                  setShowResetModal(false);
+                  setResetInput('');
+                }}
+                style={{ flex: 1 }}
+              />
+              <Button
+                title="Delete All Records"
+                variant="outline"
+                onPress={handleResetRecords}
+                loading={deleteAllMutation.isPending}
+                disabled={resetInput !== 'RESET'}
+                style={{ 
+                  flex: 1,
+                  borderColor: '#dc2626',
+                  opacity: resetInput !== 'RESET' ? 0.5 : 1,
+                }}
+                textStyle={{ color: '#dc2626', fontWeight: '700' }}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScreenContainer>
   );
 }
@@ -464,4 +574,33 @@ const styles = StyleSheet.create({
     marginRight: SPACING.md,
   },
   langText: { fontSize: FONT_SIZE.md, flex: 1 },
+  resetModalHeader: {
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+  },
+  resetWarning: {
+    fontSize: FONT_SIZE.md,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  resetInstruction: {
+    fontSize: FONT_SIZE.md,
+    textAlign: 'center',
+    fontWeight: '600',
+  },
+  resetInput: {
+    borderWidth: 2,
+    borderRadius: BORDER_RADIUS.md,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    fontSize: FONT_SIZE.lg,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginTop: SPACING.md,
+    marginBottom: SPACING.lg,
+  },
+  resetButtonRow: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+  },
 });

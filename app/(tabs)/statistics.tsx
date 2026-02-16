@@ -156,20 +156,20 @@ function StatisticsScreen() {
     }> = {};
 
     for (const t of filteredTx) {
-      const cat1 = t.categoryPath[0] ?? 'Unclassified';
+      const cat1 = t.categoryPath[0] ?? 'Uncategorized';
       if (!grouped[cat1]) grouped[cat1] = { amount: 0, children: {} };
       grouped[cat1].amount += t.convertedAmount;
 
-      if (t.categoryPath.length > 1) {
-        const cat2 = t.categoryPath[1];
-        if (!grouped[cat1].children[cat2]) grouped[cat1].children[cat2] = { amount: 0, children: {} };
-        grouped[cat1].children[cat2].amount += t.convertedAmount;
+      // When categoryPath is just [cat1] (length 1), treat it as [cat1, "Uncategorized"]
+      // so that parent-only transactions appear correctly in the subcategory drill-down.
+      const cat2 = t.categoryPath.length > 1 ? t.categoryPath[1] : 'Uncategorized';
+      if (!grouped[cat1].children[cat2]) grouped[cat1].children[cat2] = { amount: 0, children: {} };
+      grouped[cat1].children[cat2].amount += t.convertedAmount;
 
-        if (t.categoryPath.length > 2) {
-          const cat3 = t.categoryPath[2];
-          grouped[cat1].children[cat2].children[cat3] =
-            (grouped[cat1].children[cat2].children[cat3] ?? 0) + t.convertedAmount;
-        }
+      if (t.categoryPath.length > 2) {
+        const cat3 = t.categoryPath[2];
+        grouped[cat1].children[cat2].children[cat3] =
+          (grouped[cat1].children[cat2].children[cat3] ?? 0) + t.convertedAmount;
       }
     }
 

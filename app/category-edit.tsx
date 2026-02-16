@@ -3,6 +3,7 @@ import {
   Alert,
   Modal,
   TouchableOpacity as RNTouchableOpacity,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -34,9 +35,70 @@ const TAG = 'CategoryEditScreen';
 const MAX_DEPTH = 3;
 
 const ICON_OPTIONS = [
-  '📁', '🍔', '🏠', '💡', '🚗', '🏥', '🛡️', '🏛️', '🎉', '❤️',
-  '📚', '💪', '🚬', '🎮', '🛍️', '💄', '👗', '💻', '🔧', '🐾',
-  '🤲', '👨‍👩‍👧‍👦', '💰', '💼', '🎁', '🏢', '📈', '🎯', '⭐', '🌟',
+  {
+    category: 'General',
+    icons: ['📁', '⭐', '🌟', '🎯', '❤️', '🎉', '🎁', '💰', '💼', '🏢', '📋', '📌', '🔖', '🏆', '🥇', '💎', '👑', '🔔', '💡', '✨', '⚡', '🔥', '💫', '🌈'],
+  },
+  {
+    category: 'Food & Dining',
+    icons: ['🍔', '🍕', '🍜', '🍱', '🍣', '🍰', '☕', '🍺', '🥗', '🌮', '🍪', '🍎', '🍊', '🍇', '🍉', '🍓', '🍌', '🥑', '🍆', '🥦', '🌽', '🥕', '🍖', '🍗', '🥩', '🥓', '🌭', '🍟', '🥙', '🌯', '🥪', '🥚', '🥞', '🍞', '🥖', '🧀', '🥛', '🍵', '🧃', '🥤', '🍶', '🍾', '🍷', '🍸', '🍹', '🍻'],
+  },
+  {
+    category: 'Transportation',
+    icons: ['🚗', '✈️', '🚌', '🚕', '🚲', '⛽', '🚇', '🛵', '🚢', '🚂', '🏍️', '🚙', '🚐', '🚛', '🚚', '🚘', '🚍', '🏎️', '🚃', '🚄', '🚅', '🚆', '🚈', '🚊', '🚝', '🚟', '🛩️', '🛫', '💺', '🚁', '🛶', '⛵', '🚤', '⛴️', '⚓', '🚏', '🛣️'],
+  },
+  {
+    category: 'Shopping & Entertainment',
+    icons: ['🛍️', '👕', '👗', '👟', '🎬', '🎵', '🎨', '🎮', '📱', '⌚', '🎧', '📷', '🎪', '🛒', '🏬', '🏪', '🎰', '🎲', '🧩', '🎈', '🎀', '🎊', '🧸', '👚', '👖', '🧥', '👠', '👢', '👞', '🥾', '🧦', '🎩', '🧢', '👒', '💍', '👝', '👜', '🕶️'],
+  },
+  {
+    category: 'Home & Living',
+    icons: ['🏠', '🛋️', '🛏️', '💡', '🔌', '🚿', '🧹', '🔑', '🏡', '🏘️', '🏗️', '🪴', '🏢', '🏥', '🏦', '🏨', '🏪', '🏫', '🪟', '🚪', '🪑', '🛁', '🚽', '🧻', '🧺', '🧼', '🧽', '🔦', '🕯️', '🛎️'],
+  },
+  {
+    category: 'Finance & Business',
+    icons: ['💳', '💵', '💸', '🏦', '📈', '📊', '📉', '🧾', '💲', '📄', '🖊️', '💴', '💶', '💷', '💰', '🪙', '💹', '📑', '📇', '💼', '🗃️', '📂', '📁', '📋', '📌', '📍', '📎', '📏', '✂️', '🗒️', '📆', '📅', '🖋️', '✏️', '📝'],
+  },
+  {
+    category: 'Health & Fitness',
+    icons: ['🏥', '⚕️', '💊', '💪', '🏃', '⚽', '🏋️', '🧘', '🩺', '🦷', '👓', '🧴', '🏃‍♀️', '🏃‍♂️', '🤸', '⛹️', '🏌️', '🧗', '🏂', '🏄', '🚣', '🏊', '⛷️', '🚴', '🚵', '💉', '🩹', '🧠', '🫀', '🩸'],
+  },
+  {
+    category: 'Education & Work',
+    icons: ['📚', '🎓', '✏️', '📝', '💻', '🖥️', '⌨️', '🖱️', '📞', '📧', '📅', '🗂️', '📖', '📕', '📗', '📘', '📙', '📔', '📒', '📃', '📜', '📰', '🔖', '🏷️', '💼', '🖊️', '🖋️', '🖍️', '🔍', '🔬', '🎒'],
+  },
+  {
+    category: 'Personal & Lifestyle',
+    icons: ['💄', '💇', '💅', '🧖', '🎀', '👔', '🧥', '👜', '🕶️', '💍', '🎩', '💇‍♀️', '💇‍♂️', '💆', '🧴', '🪮', '🪒', '🪥', '🧼', '💎', '📿', '👠', '👡', '👢', '🧦', '🧤', '🧣', '👗', '👘', '👚'],
+  },
+  {
+    category: 'Utilities & Services',
+    icons: ['🛡️', '🔧', '📡', '💧', '🔥', '♻️', '📦', '🧰', '🔨', '🪛', '🪚', '⚙️', '🔩', '⚒️', '🛠️', '⛏️', '🪓', '🧲', '🗜️', '🔗', '🧯', '🪣', '🧪', '🧫', '🔬', '🛰️', '🔦', '🏮'],
+  },
+  {
+    category: 'Fun & Hobbies',
+    icons: ['🎲', '🎯', '🎳', '🎣', '🎭', '🎹', '🎸', '🎺', '🎻', '🎤', '🎧', '🎼', '🎵', '🎶', '📻', '📺', '📹', '📷', '🎥', '🎬', '🎨', '🖼️', '🖌️', '🎪', '🎡', '🎢', '🎠', '🎰', '🧩', '🪀', '🪁'],
+  },
+  {
+    category: 'Family & Pets',
+    icons: ['👨‍👩‍👧‍👦', '🐾', '🤲', '👶', '🧒', '👦', '👧', '👨', '👩', '👴', '👵', '🐶', '🐕', '🐩', '🐱', '🐈', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🐦', '🐤', '🦆', '🦉', '🐴', '🦄', '🐝', '🦋', '🐌', '🐞', '🐢', '🐍', '🐙', '🐠', '🐟', '🐬', '🐳', '🦈', '🐊', '🐘', '🦒', '🦘', '🐏', '🐑', '🐐'],
+  },
+  {
+    category: 'Nature & Weather',
+    icons: ['🌸', '🌺', '🌻', '🌷', '🌹', '🏵️', '💐', '🌾', '🌱', '🌿', '🍀', '🍁', '🍂', '🍃', '🪴', '🌳', '🌲', '🌴', '🌵', '🎄', '☀️', '🌙', '⭐', '🌟', '💫', '✨', '⚡', '🔥', '🌈', '☁️', '⛅', '🌤️', '🌧️', '⛈️', '🌩️', '❄️', '☃️', '💧', '💦', '☔', '🌊'],
+  },
+  {
+    category: 'Travel & Places',
+    icons: ['🗺️', '🧭', '🏔️', '⛰️', '🌋', '🗻', '🏕️', '🏖️', '🏜️', '🏝️', '🏞️', '🏟️', '🏛️', '🏗️', '🏘️', '🏚️', '🏠', '🏡', '🏢', '🏣', '🏤', '🏥', '🏦', '🏨', '🏩', '🏪', '🏫', '🏬', '🏭', '🏯', '🏰', '💒', '🗼', '🗽', '⛪', '🕌', '⛲', '⛺', '🌁', '🌃', '🏙️', '🌅', '🌆', '🌇', '🌉'],
+  },
+  {
+    category: 'Technology',
+    icons: ['💻', '🖥️', '🖨️', '⌨️', '🖱️', '💽', '💾', '💿', '📀', '📱', '📲', '☎️', '📞', '📟', '📠', '📺', '📻', '🎙️', '⏰', '⌚', '📡', '🔋', '🔌', '💡', '🔦', '🕯️', '🔭', '🔬', '🧬', '🧪'],
+  },
+  {
+    category: 'Symbols',
+    icons: ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '💔', '❣️', '💕', '💞', '💓', '💗', '💖', '💘', '✔️', '✅', '❌', '❎', '➕', '➖', '✖️', '❓', '❔', '❕', '❗', '⚠️', '🚸', '⛔', '🚫', '⬆️', '➡️', '⬇️', '⬅️', '↕️', '↔️', '🔄', '🔙', '🔚', '🔛', '🔜', '🔝'],
+  },
 ];
 
 function CategoryEditScreen() {
@@ -91,7 +153,7 @@ function CategoryEditScreen() {
       return;
     }
 
-    // Prevent creating/renaming to "Unclassified" — it is system-managed
+    // Prevent creating/renaming to "Uncategorized" — it is system-managed
     if (editName.trim() === UNCLASSIFIED_NAME) {
       showToast(`"${UNCLASSIFIED_NAME}" is reserved and managed automatically`, 'error');
       return;
@@ -237,7 +299,7 @@ function CategoryEditScreen() {
               ]}>
                 {/* Root row */}
                 <View style={styles.row}>
-                  {/* Drag handle — disabled for Unclassified (pinned to top) */}
+                  {/* Drag handle — disabled for Uncategorized (pinned to top) */}
                   <TouchableOpacity
                     onLongPress={isSystem ? undefined : () => {
                       // #region agent log
@@ -268,13 +330,13 @@ function CategoryEditScreen() {
                     <Text style={[styles.l1Name, { color: theme.text.primary }]}>{item.name}</Text>
                     {hasChildren && (
                       <Text style={[styles.count, { color: theme.text.tertiary }]}>
-                        {item.children!.length} subcategories
+                        {item.children!.filter(c => !isUnclassified(c)).length} subcategories
                       </Text>
                     )}
                   </View>
 
                   <View style={styles.actions}>
-                    {/* Hide edit/add-sub/delete for Unclassified */}
+                    {/* Hide edit/add-sub/delete for Uncategorized */}
                     {!isSystem && (
                       <TouchableOpacity style={styles.actionBtn} onPress={() => openEditModalForCat(item)}>
                         <Ionicons name="create-outline" size={20} color={theme.text.secondary} />
@@ -327,7 +389,7 @@ function CategoryEditScreen() {
                             childActive && { backgroundColor: `${theme.primary}15` },
                           ]}>
                             <View style={styles.row}>
-                              {/* Drag handle — disabled for Unclassified */}
+                              {/* Drag handle — disabled for Uncategorized */}
                               <TouchableOpacity
                                 onLongPress={childIsSystem ? undefined : () => {
                                   // #region agent log
@@ -358,7 +420,7 @@ function CategoryEditScreen() {
                                 <Text style={[styles.l2Name, { color: theme.text.primary }]}>{child.name}</Text>
                                 {childHasKids && (
                                   <Text style={[styles.count, { color: theme.text.tertiary }]}>
-                                    {child.children!.length} subcategories
+                                    {child.children!.filter(c => !isUnclassified(c)).length} subcategories
                                   </Text>
                                 )}
                               </View>
@@ -412,7 +474,7 @@ function CategoryEditScreen() {
                                       gcActive && { backgroundColor: `${theme.primary}15` },
                                     ]}>
                                       <View style={styles.row}>
-                                        {/* Drag handle — disabled for Unclassified */}
+                                        {/* Drag handle — disabled for Uncategorized */}
                                         <TouchableOpacity
                                           onLongPress={gcIsSystem ? undefined : () => {
                                             // #region agent log
@@ -507,22 +569,31 @@ function CategoryEditScreen() {
             />
 
             <Text style={[styles.iconLabel, { color: theme.text.secondary }]}>Choose icon:</Text>
-            <View style={styles.iconGrid}>
-              {ICON_OPTIONS.map((icon) => (
-                <RNTouchableOpacity
-                  key={icon}
-                  style={[
-                    styles.iconOption,
-                    { borderColor: theme.border },
-                    editIcon === icon && { borderColor: theme.primary, backgroundColor: `${theme.primary}15` },
-                  ]}
-                  onPress={() => setEditIcon(icon)}
-                  activeOpacity={0.6}
-                >
-                  <Text style={styles.iconText}>{icon}</Text>
-                </RNTouchableOpacity>
+            <ScrollView style={styles.iconScrollView} showsVerticalScrollIndicator={true}>
+              {ICON_OPTIONS.map((section) => (
+                <View key={section.category} style={styles.iconSection}>
+                  <Text style={[styles.iconSectionTitle, { color: theme.text.tertiary }]}>
+                    {section.category}
+                  </Text>
+                  <View style={styles.iconGrid}>
+                    {section.icons.map((icon) => (
+                      <RNTouchableOpacity
+                        key={icon}
+                        style={[
+                          styles.iconOption,
+                          { borderColor: theme.border },
+                          editIcon === icon && { borderColor: theme.primary, backgroundColor: `${theme.primary}15` },
+                        ]}
+                        onPress={() => setEditIcon(icon)}
+                        activeOpacity={0.6}
+                      >
+                        <Text style={styles.iconText}>{icon}</Text>
+                      </RNTouchableOpacity>
+                    ))}
+                  </View>
+                </View>
               ))}
-            </View>
+            </ScrollView>
 
             <View style={styles.modalActions}>
               <Button
@@ -702,6 +773,7 @@ const styles = StyleSheet.create({
   modalContent: {
     borderRadius: BORDER_RADIUS.lg,
     padding: SPACING.xl,
+    maxHeight: '80%',
   },
   modalTitle: {
     fontSize: FONT_SIZE.xl,
@@ -726,11 +798,24 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: SPACING.sm,
   },
+  iconScrollView: {
+    maxHeight: 300,
+    marginBottom: SPACING.lg,
+  },
+  iconSection: {
+    marginBottom: SPACING.md,
+  },
+  iconSectionTitle: {
+    fontSize: FONT_SIZE.xs,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    marginBottom: SPACING.xs,
+    letterSpacing: 0.5,
+  },
   iconGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: SPACING.sm,
-    marginBottom: SPACING.lg,
   },
   iconOption: {
     width: 40,

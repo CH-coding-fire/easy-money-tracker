@@ -18,7 +18,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import { CalendarPicker } from '../src/components/CalendarPicker';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
 import { ScreenContainer } from '../src/components/ScreenContainer';
@@ -200,7 +200,8 @@ function EditTransactionScreen() {
   const tabBarHeight = 56 + Math.max(insets.bottom, 4);
 
   const TAB_ITEMS: { route: string; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-    { route: '/(tabs)', label: 'Add', icon: 'wallet-outline' },
+    { route: '/(tabs)', label: 'Expense', icon: 'arrow-down-circle-outline' },
+    { route: '/(tabs)/add-income', label: 'Income', icon: 'arrow-up-circle-outline' },
     { route: '/(tabs)/statistics', label: 'Statistics', icon: 'stats-chart-outline' },
     { route: '/(tabs)/records', label: 'Records', icon: 'document-text-outline' },
     { route: '/(tabs)/settings', label: 'Settings', icon: 'settings-outline' },
@@ -319,17 +320,15 @@ function EditTransactionScreen() {
             >
               <Text style={[styles.dateText, { color: theme.text.primary }]}>{formatISODate(selectedDate)}</Text>
             </TouchableOpacity>
-            {showDatePicker && (
-              <DateTimePicker
-                value={selectedDate}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={(_, date) => {
-                  setShowDatePicker(Platform.OS === 'ios');
-                  if (date) setSelectedDate(date);
-                }}
-              />
-            )}
+            <CalendarPicker
+              visible={showDatePicker}
+              value={selectedDate}
+              onSelect={(date) => {
+                setSelectedDate(date);
+                setShowDatePicker(false);
+              }}
+              onCancel={() => setShowDatePicker(false)}
+            />
           </View>
 
           {/* Row 5: Title */}
@@ -490,7 +489,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: SPACING.lg,
+    marginBottom: SPACING.xs,
     marginTop: SPACING.sm,
     gap: SPACING.sm,
   },

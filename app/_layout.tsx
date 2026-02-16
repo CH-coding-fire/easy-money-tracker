@@ -36,7 +36,6 @@ function RootLayoutInner() {
         <Stack.Screen
           name="category-edit"
           options={{
-            presentation: 'modal',
             headerShown: true,
             title: 'Edit Categories',
             headerStyle: { backgroundColor: theme.cardBackground },
@@ -46,7 +45,6 @@ function RootLayoutInner() {
         <Stack.Screen
           name="currency-tags"
           options={{
-            presentation: 'modal',
             headerShown: true,
             title: 'Currency Settings',
             headerStyle: { backgroundColor: theme.cardBackground },
@@ -56,11 +54,16 @@ function RootLayoutInner() {
         <Stack.Screen
           name="frequent-categories"
           options={{
-            presentation: 'modal',
             headerShown: true,
             title: 'Frequent Categories',
             headerStyle: { backgroundColor: theme.cardBackground },
             headerTintColor: theme.text.primary,
+          }}
+        />
+        <Stack.Screen
+          name="select-category"
+          options={{
+            headerShown: false,
           }}
         />
         <Stack.Screen
@@ -76,7 +79,7 @@ function RootLayoutInner() {
         <Toast
           message={toast.message}
           type={toast.type}
-          duration={2000}
+          duration={6000}
           onHide={hideToast}
         />
       )}

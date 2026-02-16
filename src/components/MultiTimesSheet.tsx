@@ -5,10 +5,9 @@ import {
   StyleSheet,
   Modal,
   Pressable,
-  Platform,
   TextInput,
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import { CalendarPicker } from './CalendarPicker';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
 import { SegmentedControl } from './SegmentedControl';
@@ -99,17 +98,15 @@ export function MultiTimesSheet({
                 {formatISODate(startDate)}
               </Text>
             </Pressable>
-            {showDatePicker && (
-              <DateTimePicker
-                value={startDate}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={(_, date) => {
-                  setShowDatePicker(Platform.OS === 'ios');
-                  if (date) setStartDate(date);
-                }}
-              />
-            )}
+            <CalendarPicker
+              visible={showDatePicker}
+              value={startDate}
+              onSelect={(date) => {
+                setStartDate(date);
+                setShowDatePicker(false);
+              }}
+              onCancel={() => setShowDatePicker(false)}
+            />
           </View>
 
           {/* Frequency */}
