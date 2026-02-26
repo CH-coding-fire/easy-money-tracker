@@ -18,6 +18,7 @@ import { Card } from '../src/components/Card';
 import { ErrorBoundary } from '../src/components/ErrorBoundary';
 import { useSettings, useSaveSettings } from '../src/hooks/useSettings';
 import { useTheme } from '../src/hooks/useTheme';
+import { useI18n } from '../src/hooks/useI18n';
 import { LANGUAGES } from '../src/constants/languages';
 import { ALL_CURRENCIES } from '../src/constants/currencies';
 import { THEME_OPTIONS } from '../src/constants/themes';
@@ -33,6 +34,7 @@ function OnboardingScreen() {
   const saveMutation = useSaveSettings();
   const insets = useSafeAreaInsets();
   const theme = useTheme();
+  const { t } = useI18n();
 
   const [step, setStep] = useState(0); // 0=lang, 1=currency, 2=preferences, 3=education
   const [selectedLang, setSelectedLang] = useState(settings.language);
@@ -138,8 +140,8 @@ function OnboardingScreen() {
         {step === 0 && (
           <View style={styles.stepContainer}>
             <Ionicons name="globe-outline" size={56} color={theme.primary} style={{ marginBottom: SPACING.md }} />
-            <Text style={[styles.title, { color: theme.text.primary }]}>Welcome to Easy Money Tracker!</Text>
-            <Text style={[styles.subtitle, { color: theme.text.secondary }]}>Choose your language</Text>
+            <Text style={[styles.title, { color: theme.text.primary }]}>{t('onboarding.welcome')}</Text>
+            <Text style={[styles.subtitle, { color: theme.text.secondary }]}>{t('onboarding.chooseLanguage')}</Text>
 
             <FlatList
               data={LANGUAGES}
@@ -170,7 +172,7 @@ function OnboardingScreen() {
         {step === 1 && (
           <View style={styles.stepContainer}>
             <Ionicons name="wallet-outline" size={56} color={theme.primary} style={{ marginBottom: SPACING.md }} />
-            <Text style={[styles.title, { color: theme.text.primary }]}>Set Your Currency</Text>
+            <Text style={[styles.title, { color: theme.text.primary }]}>{t('onboarding.setCurrency')}</Text>
 
             {/* Main currency — dropdown */}
             <Text style={[styles.sectionLabel, { color: theme.text.primary }]}>Main Currency</Text>
@@ -236,7 +238,7 @@ function OnboardingScreen() {
                       <Text style={[styles.orderName, { color: theme.text.tertiary }]}>{mainCurrencyInfo.name}</Text>
                     </View>
                     <View style={[styles.defaultBadge, { backgroundColor: `${theme.primary}20` }]}>
-                      <Text style={[styles.defaultBadgeText, { color: theme.primary }]}>Default</Text>
+                      <Text style={[styles.defaultBadgeText, { color: theme.primary }]}>{t('common.default')}</Text>
                     </View>
                   </View>
                 )}
@@ -294,8 +296,8 @@ function OnboardingScreen() {
         {step === 2 && (
           <View style={styles.stepContainer}>
             <Ionicons name="settings-outline" size={56} color={theme.warning} style={{ marginBottom: SPACING.md }} />
-            <Text style={[styles.title, { color: theme.text.primary }]}>Set Your Preferences</Text>
-            <Text style={[styles.subtitle, { color: theme.text.secondary }]}>Customize how you view your data</Text>
+            <Text style={[styles.title, { color: theme.text.primary }]}>{t('onboarding.setPreferences')}</Text>
+            <Text style={[styles.subtitle, { color: theme.text.secondary }]}>{t('onboarding.customizeView')}</Text>
 
             {/* Theme Selection */}
             <Text style={[styles.sectionLabel, { color: theme.text.primary }]}>Theme</Text>
@@ -424,14 +426,14 @@ function OnboardingScreen() {
         <View style={styles.navRow}>
           {step > 0 && (
             <Button
-              title="Back"
+              title={t('common.back')}
               variant="ghost"
               onPress={() => setStep(step - 1)}
               style={{ flex: 1 }}
             />
           )}
           <Button
-            title={step === 3 ? 'Get Started' : 'Next'}
+            title={step === 3 ? t('onboarding.getStarted') : t('common.next')}
             onPress={nextStep}
             style={{ flex: 1 }}
             size="lg"

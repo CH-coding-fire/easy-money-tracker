@@ -16,6 +16,7 @@ import { ErrorBoundary } from '../src/components/ErrorBoundary';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSettings, useSaveSettings } from '../src/hooks/useSettings';
 import { useTheme } from '../src/hooks/useTheme';
+import { useI18n } from '../src/hooks/useI18n';
 import { ALL_CURRENCIES, CurrencyInfo } from '../src/constants/currencies';
 import { SPACING, FONT_SIZE, BORDER_RADIUS } from '../src/constants/spacing';
 import { logger } from '../src/utils/logger';
@@ -28,6 +29,7 @@ function CurrencyTagsScreen() {
   const saveMutation = useSaveSettings();
   const queryClient = useQueryClient();
   const theme = useTheme();
+  const { t } = useI18n();
 
   const [mainPickerVisible, setMainPickerVisible] = useState(false);
   const [secPickerVisible, setSecPickerVisible] = useState(false);
@@ -125,7 +127,7 @@ function CurrencyTagsScreen() {
   const listHeader = (
     <>
       {/* ── Section 1: Main Currency ── */}
-      <Text style={[styles.sectionLabel, { color: theme.text.primary }]}>Main Currency</Text>
+      <Text style={[styles.sectionLabel, { color: theme.text.primary }]}>{t('currency.main')}</Text>
       <Pressable
         style={[styles.dropdown, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}
         onPress={() => { setSearch(''); setMainPickerVisible(true); }}
@@ -142,10 +144,10 @@ function CurrencyTagsScreen() {
 
       {/* ── Section 2: Secondary Currencies ── */}
       <Text style={[styles.sectionLabel, { marginTop: SPACING.xl, color: theme.text.primary }]}>
-        Secondary Currencies
+        {t('currency.secondary')}
       </Text>
       <Text style={[styles.sectionHint, { color: theme.text.tertiary }]}>
-        Optional. These appear as quick-switch tags in Add &amp; Statistics screens.
+        {t('currency.secondaryHint')}
       </Text>
       <Pressable
         style={[styles.dropdown, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}
@@ -155,8 +157,8 @@ function CurrencyTagsScreen() {
           <Ionicons name="add-circle-outline" size={22} color={theme.primary} />
           <Text style={[styles.addBtnText, { color: theme.primary }]}>
             {secondaryList.length > 0
-              ? `${secondaryList.length} selected`
-              : 'Add Currency'}
+              ? t('currency.nSelected', { count: secondaryList.length })
+              : t('currency.addCurrency')}
           </Text>
         </View>
         <Ionicons name="chevron-down" size={20} color={theme.text.secondary} />
@@ -165,9 +167,9 @@ function CurrencyTagsScreen() {
       {/* ── Section 3 header: Currency Order ── */}
       {secondaryList.length > 0 && (
         <>
-          <Text style={[styles.sectionLabel, { marginTop: SPACING.lg, color: theme.text.primary }]}>Currency Order</Text>
+          <Text style={[styles.sectionLabel, { marginTop: SPACING.lg, color: theme.text.primary }]}>{t('currency.order')}</Text>
           <Text style={[styles.sectionHint, { color: theme.text.tertiary }]}>
-            Long press the ≡ handle to drag and reorder.
+            {t('currency.orderHint')}
           </Text>
 
           {/* Main currency — fixed at top */}
@@ -180,7 +182,7 @@ function CurrencyTagsScreen() {
                 <Text style={[styles.orderName, { color: theme.text.tertiary }]}>{mainInfo.name}</Text>
               </View>
               <View style={[styles.defaultBadge, { backgroundColor: `${theme.primary}20` }]}>
-                <Text style={[styles.defaultBadgeText, { color: theme.primary }]}>Default</Text>
+                <Text style={[styles.defaultBadgeText, { color: theme.primary }]}>{t('common.default')}</Text>
               </View>
             </View>
           )}
@@ -209,7 +211,7 @@ function CurrencyTagsScreen() {
         <View style={[styles.modalOverlay, { backgroundColor: theme.overlay }]}>
           <View style={[styles.modalContent, { backgroundColor: theme.cardBackground }]}>
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: theme.text.primary }]}>Select Main Currency</Text>
+              <Text style={[styles.modalTitle, { color: theme.text.primary }]}>{t('currency.selectMain')}</Text>
               <Pressable onPress={() => setMainPickerVisible(false)}>
                 <Ionicons name="close" size={24} color={theme.text.secondary} />
               </Pressable>
@@ -220,7 +222,7 @@ function CurrencyTagsScreen() {
                 backgroundColor: theme.background,
                 color: theme.text.primary,
               }]}
-              placeholder="Search currencies..."
+              placeholder={t('currency.search')}
               value={search}
               onChangeText={setSearch}
               placeholderTextColor={theme.text.tertiary}
@@ -260,7 +262,7 @@ function CurrencyTagsScreen() {
         <View style={[styles.modalOverlay, { backgroundColor: theme.overlay }]}>
           <View style={[styles.modalContent, { backgroundColor: theme.cardBackground }]}>
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: theme.text.primary }]}>Add Secondary Currencies</Text>
+              <Text style={[styles.modalTitle, { color: theme.text.primary }]}>{t('currency.addSecondary')}</Text>
               <Pressable onPress={() => setSecPickerVisible(false)}>
                 <Ionicons name="close" size={24} color={theme.text.secondary} />
               </Pressable>
@@ -271,7 +273,7 @@ function CurrencyTagsScreen() {
                 backgroundColor: theme.background,
                 color: theme.text.primary,
               }]}
-              placeholder="Search currencies..."
+              placeholder={t('currency.search')}
               value={search}
               onChangeText={setSearch}
               placeholderTextColor={theme.text.tertiary}

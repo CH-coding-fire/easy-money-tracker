@@ -32,6 +32,7 @@ import { ErrorBoundary } from '../src/components/ErrorBoundary';
 import { useCategories } from '../src/hooks/useCategories';
 import { useSettings } from '../src/hooks/useSettings';
 import { useTheme } from '../src/hooks/useTheme';
+import { useI18n } from '../src/hooks/useI18n';
 import { useUpdateTransaction, useTransactions } from '../src/hooks/useTransactions';
 import { useUIStore } from '../src/store/uiStore';
 import { TransactionType, Transaction } from '../src/types';
@@ -58,6 +59,7 @@ function EditTransactionScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const theme = useTheme();
+  const { t } = useI18n();
   const categories = useCategories();
   const settings = useSettings();
   const updateMutation = useUpdateTransaction();
@@ -151,8 +153,8 @@ function EditTransactionScreen() {
       <ScreenContainer>
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle-outline" size={48} color={theme.error} />
-          <Text style={[styles.errorText, { color: theme.text.secondary }]}>Transaction not found</Text>
-          <Button title="Go Back" onPress={() => router.back()} size="md" />
+          <Text style={[styles.errorText, { color: theme.text.secondary }]}>{t('error.notFound')}</Text>
+          <Button title={t('common.back')} onPress={() => router.back()} size="md" />
         </View>
       </ScreenContainer>
     );
@@ -188,11 +190,11 @@ function EditTransactionScreen() {
     try {
       await updateMutation.mutateAsync(tx);
       logger.info(TAG, 'Transaction updated', { id: tx.id });
-      showToast('Transaction updated!', 'success');
+      showToast(t('toast.updated'), 'success');
       router.back();
     } catch (err: any) {
       logger.error(TAG, 'Update failed', err);
-      showToast(`Failed to update: ${err.message}`, 'error');
+      showToast(t('toast.failedToSave', { error: err.message }), 'error');
     }
   }
 
@@ -200,11 +202,11 @@ function EditTransactionScreen() {
   const tabBarHeight = 56 + Math.max(insets.bottom, 4);
 
   const TAB_ITEMS: { route: string; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-    { route: '/(tabs)', label: 'Expense', icon: 'arrow-down-circle-outline' },
-    { route: '/(tabs)/add-income', label: 'Income', icon: 'arrow-up-circle-outline' },
-    { route: '/(tabs)/statistics', label: 'Statistics', icon: 'stats-chart-outline' },
-    { route: '/(tabs)/records', label: 'Records', icon: 'document-text-outline' },
-    { route: '/(tabs)/settings', label: 'Settings', icon: 'settings-outline' },
+    { route: '/(tabs)', label: t('add.expense'), icon: 'arrow-down-circle-outline' },
+    { route: '/(tabs)/add-income', label: t('add.income'), icon: 'arrow-up-circle-outline' },
+    { route: '/(tabs)/statistics', label: t('tab.stats'), icon: 'stats-chart-outline' },
+    { route: '/(tabs)/records', label: t('tab.records'), icon: 'document-text-outline' },
+    { route: '/(tabs)/settings', label: t('tab.settings'), icon: 'settings-outline' },
   ];
 
   return (
@@ -228,14 +230,14 @@ function EditTransactionScreen() {
             >
               <Ionicons name="arrow-back" size={24} color={theme.text.primary} />
             </TouchableOpacity>
-            <Text style={[styles.screenTitle, { color: theme.text.primary }]}>Edit Transaction</Text>
+            <Text style={[styles.screenTitle, { color: theme.text.primary }]}>{t('editTransaction.title')}</Text>
           </View>
 
           {/* Row 0: Expense / Income toggle */}
           <SegmentedControl<TransactionType>
             options={[
-              { label: 'Expense', value: 'expense' },
-              { label: 'Income', value: 'income' },
+              { label: t('add.expense'), value: 'expense' },
+              { label: t('add.income'), value: 'income' },
             ]}
             selected={transactionType}
             onSelect={setTransactionType}
@@ -243,7 +245,7 @@ function EditTransactionScreen() {
 
           {/* Row 1: Amount + Currency + Tags */}
           <View style={styles.row}>
-            <Text style={[styles.sectionLabel, { color: theme.text.secondary }]}>Amount</Text>
+            <Text style={[styles.sectionLabel, { color: theme.text.secondary }]}>{t('add.amount')}</Text>
             <View style={styles.amountRow}>
               <TouchableOpacity
                 style={[styles.currencyBtn, { backgroundColor: `${theme.primary}20` }]}
@@ -298,7 +300,7 @@ function EditTransactionScreen() {
 
           {/* Row 2+3: Category */}
           <View style={styles.row}>
-            <Text style={[styles.sectionLabel, { color: theme.text.secondary }]}>Category</Text>
+            <Text style={[styles.sectionLabel, { color: theme.text.secondary }]}>{t('add.category')}</Text>
             <CategoryPicker
               categories={currentCategories}
               selectedPath={categoryPath}
@@ -313,7 +315,7 @@ function EditTransactionScreen() {
 
           {/* Row 4: Date */}
           <View style={styles.row}>
-            <Text style={[styles.sectionLabel, { color: theme.text.secondary }]}>Date</Text>
+            <Text style={[styles.sectionLabel, { color: theme.text.secondary }]}>{t('add.date')}</Text>
             <TouchableOpacity
               style={[styles.dateBtn, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}
               onPress={() => setShowDatePicker(true)}
@@ -341,8 +343,8 @@ function EditTransactionScreen() {
               name="title"
               render={({ field: { onChange, onBlur, value } }) => (
                 <Input
-                  label="Title (optional)"
-                  placeholder="e.g. Lunch at cafe"
+                  label={t('add.titleField')}
+                  placeholder={t('transaction.titlePlaceholder')}
                   value={value}
                   onChangeText={onChange}
                   onBlur={onBlur}
@@ -362,8 +364,8 @@ function EditTransactionScreen() {
               name="description"
               render={({ field: { onChange, onBlur, value } }) => (
                 <Input
-                  label="Description (optional)"
-                  placeholder="Add notes..."
+                  label={t('add.description')}
+                  placeholder={t('transaction.descriptionPlaceholder')}
                   value={value}
                   onChangeText={onChange}
                   onBlur={onBlur}
@@ -382,7 +384,7 @@ function EditTransactionScreen() {
         {/* Floating Update Button — sits above the custom tab bar */}
         <View style={[styles.floatingBtnContainer, { bottom: tabBarHeight, backgroundColor: `${theme.background}F2` }]}>
           <Button
-            title="Update"
+            title={t('common.save')}
             onPress={handleSubmit(onSubmit)}
             disabled={!canSave}
             loading={updateMutation.isPending}
@@ -419,7 +421,7 @@ function EditTransactionScreen() {
           <View style={[styles.modalOverlay, { backgroundColor: theme.overlay }]}>
             <View style={[styles.modalContent, { backgroundColor: theme.cardBackground }]}>
               <View style={styles.modalHeader}>
-                <Text style={[styles.modalTitle, { color: theme.text.primary }]}>Select Currency</Text>
+                <Text style={[styles.modalTitle, { color: theme.text.primary }]}>{t('currency.select')}</Text>
                 <Pressable onPress={() => setCurrencyPickerVisible(false)}>
                   <Ionicons name="close" size={24} color={theme.text.secondary} />
                 </Pressable>
@@ -430,7 +432,7 @@ function EditTransactionScreen() {
                   backgroundColor: theme.background,
                   color: theme.text.primary,
                 }]}
-                placeholder="Search currencies..."
+                placeholder={t('currency.search')}
                 value={currencySearch}
                 onChangeText={setCurrencySearch}
                 placeholderTextColor={theme.text.tertiary}

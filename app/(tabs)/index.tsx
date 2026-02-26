@@ -36,6 +36,7 @@ import { CalculatorModal } from '../../src/components/CalculatorModal';
 import { useCategories } from '../../src/hooks/useCategories';
 import { useSettings } from '../../src/hooks/useSettings';
 import { useTheme } from '../../src/hooks/useTheme';
+import { useI18n } from '../../src/hooks/useI18n';
 import { useAddTransaction, useAddTransactions } from '../../src/hooks/useTransactions';
 import { useUIStore } from '../../src/store/uiStore';
 import { TransactionType, Transaction } from '../../src/types';
@@ -62,6 +63,7 @@ function AddExpenseScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const theme = useTheme();
+  const { t } = useI18n();
   const categories = useCategories();
   const settings = useSettings();
   const addMutation = useAddTransaction();
@@ -176,7 +178,7 @@ function AddExpenseScreen() {
     try {
       await addMutation.mutateAsync(tx);
       logger.info(TAG, 'Quick-save transaction added', { id: tx.id });
-      showToast(`Transaction saved! 💡 ${getRandomFinancialQuote()}`, 'success');
+      showToast(t('toast.transactionSaved', { quote: getRandomFinancialQuote() }), 'success');
 
       // Reset form
       reset({ amount: '', title: '', description: '' });
@@ -191,7 +193,7 @@ function AddExpenseScreen() {
       }, 100);
     } catch (err: any) {
       logger.error(TAG, 'Quick-save failed', err);
-      showToast(`Failed to save: ${err.message}`, 'error');
+      showToast(t('toast.failedToSave', { error: err.message }), 'error');
     }
   }
 
@@ -222,7 +224,7 @@ function AddExpenseScreen() {
         }));
         await addBatchMutation.mutateAsync(txs);
         logger.info(TAG, 'Multi-times transactions added', { count: txs.length });
-        showToast(`${txs.length} transactions saved! 💡 ${getRandomFinancialQuote()}`, 'success');
+        showToast(t('toast.transactionsSaved', { count: txs.length, quote: getRandomFinancialQuote() }), 'success');
       } else {
         // One-time: create single transaction
         const tx: Transaction = {
@@ -241,7 +243,7 @@ function AddExpenseScreen() {
         };
         await addMutation.mutateAsync(tx);
         logger.info(TAG, 'Transaction added', { id: tx.id });
-        showToast(`Transaction saved! 💡 ${getRandomFinancialQuote()}`, 'success');
+        showToast(t('toast.transactionSaved', { quote: getRandomFinancialQuote() }), 'success');
       }
 
       // Reset form
@@ -254,7 +256,7 @@ function AddExpenseScreen() {
       setTitleEntered(false);
     } catch (err: any) {
       logger.error(TAG, 'Save failed', err);
-      showToast(`Failed to save: ${err.message}`, 'error');
+      showToast(t('toast.failedToSave', { error: err.message }), 'error');
     }
   }
 
@@ -273,11 +275,11 @@ function AddExpenseScreen() {
         >
           <View style={styles.titleRow}>
             <Ionicons name="arrow-down-circle" size={28} color={theme.error} />
-            <Text style={[styles.screenTitle, { color: theme.text.primary }]}>Add Expense</Text>
+            <Text style={[styles.screenTitle, { color: theme.text.primary }]}>{t('add.addExpense')}</Text>
             <View style={{ flex: 1 }} />
             <View style={styles.modeToggle}>
               <Text style={[styles.modeToggleText, { color: isQuickMode ? theme.primary : theme.text.tertiary }]}>
-                {isQuickMode ? '⚡ Quick' : '📝 Detail'}
+                {isQuickMode ? `⚡ ${t('add.quick')}` : `📝 ${t('add.detail')}`}
               </Text>
               <Switch
                 value={isQuickMode}
@@ -292,13 +294,13 @@ function AddExpenseScreen() {
           {/* Row 1: Amount + Currency + Tags */}
           <View style={styles.row}>
             <View style={styles.sectionLabelRow}>
-              <Text style={[styles.sectionLabel, { color: theme.text.secondary, marginBottom: 0 }]}>Amount</Text>
+              <Text style={[styles.sectionLabel, { color: theme.text.secondary, marginBottom: 0 }]}>{t('add.amount')}</Text>
               <TouchableOpacity
                 style={[styles.calculatorBtn, { backgroundColor: `${theme.primary}15`, borderColor: `${theme.primary}40` }]}
                 onPress={() => setCalculatorVisible(true)}
               >
                 <Ionicons name="calculator-outline" size={14} color={theme.primary} />
-                <Text style={[styles.calculatorBtnText, { color: theme.primary }]}>Calc</Text>
+                <Text style={[styles.calculatorBtnText, { color: theme.primary }]}>{t('add.calculate')}</Text>
               </TouchableOpacity>
             </View>
             <View style={styles.amountRow}>
@@ -360,7 +362,7 @@ function AddExpenseScreen() {
           {/* Quick mode: Date before Category */}
           {isQuickMode && (
             <View style={[styles.row, !amountEntered && styles.blurred]}>
-              <Text style={[styles.sectionLabel, { color: theme.text.secondary }]}>Date</Text>
+              <Text style={[styles.sectionLabel, { color: theme.text.secondary }]}>{t('common.date')}</Text>
               <TouchableOpacity
                 style={[styles.dateBtn, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}
                 onPress={() => setShowDatePicker(true)}
@@ -382,7 +384,7 @@ function AddExpenseScreen() {
 
           {/* Category (always shown) */}
           <View style={[styles.row, !amountEntered && styles.blurred]}>
-            <Text style={[styles.sectionLabel, { color: theme.text.secondary }]}>Category</Text>
+            <Text style={[styles.sectionLabel, { color: theme.text.secondary }]}>{t('common.category')}</Text>
             <CategoryPicker
               categories={currentCategories}
               selectedPath={categoryPath}
@@ -406,7 +408,7 @@ function AddExpenseScreen() {
               {/* Date / Starting Date */}
               <View style={[styles.row, !amountEntered && styles.blurred]}>
                 <Text style={[styles.sectionLabel, { color: theme.text.secondary }]}>
-                  {isMultiTimes && multiTimesConfig ? 'Starting Date' : 'Date'}
+                  {isMultiTimes && multiTimesConfig ? t('transaction.startingDate') : t('common.date')}
                 </Text>
                 <TouchableOpacity
                   style={[styles.dateBtn, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}
@@ -434,11 +436,11 @@ function AddExpenseScreen() {
 
               {/* One-time / Multi-times */}
               <View style={[styles.row, !canShowMultiTimes && styles.blurred]}>
-                <Text style={[styles.sectionLabel, { color: theme.text.secondary }]}>Type</Text>
+                <Text style={[styles.sectionLabel, { color: theme.text.secondary }]}>{t('transaction.type')}</Text>
                 <SegmentedControl
                   options={[
-                    { label: 'One-time', value: 'onetime' },
-                    { label: 'Multi-times', value: 'multi' },
+                    { label: t('transaction.oneTime'), value: 'onetime' },
+                    { label: t('transaction.multiTimes'), value: 'multi' },
                   ]}
                   selected={isMultiTimes ? 'multi' : 'onetime'}
                   onSelect={(v) => {
@@ -476,8 +478,8 @@ function AddExpenseScreen() {
                   name="title"
                   render={({ field: { onChange, onBlur, value } }) => (
                     <Input
-                      label="Title (optional)"
-                      placeholder="e.g. Lunch at cafe"
+                      label={t('transaction.title')}
+                      placeholder={t('transaction.titlePlaceholder')}
                       value={value}
                       onChangeText={(v) => {
                         onChange(v);
@@ -501,8 +503,8 @@ function AddExpenseScreen() {
                   name="description"
                   render={({ field: { onChange, onBlur, value } }) => (
                     <Input
-                      label="Description (optional)"
-                      placeholder="Add notes..."
+                      label={t('transaction.description')}
+                      placeholder={t('transaction.descriptionPlaceholder')}
                       value={value}
                       onChangeText={onChange}
                       onBlur={onBlur}
@@ -524,7 +526,7 @@ function AddExpenseScreen() {
         {/* Floating Save Button */}
         <View style={[styles.floatingBtnContainer, { backgroundColor: `${theme.background}F2` }]}>
           <Button
-            title="Save"
+            title={t('common.save')}
             onPress={handleSubmit(onSubmit)}
             disabled={!canSave}
             loading={addMutation.isPending || addBatchMutation.isPending}
@@ -574,7 +576,7 @@ function AddExpenseScreen() {
           <View style={[styles.modalOverlay, { backgroundColor: theme.overlay }]}>
             <View style={[styles.modalContent, { backgroundColor: theme.cardBackground }]}>
               <View style={styles.modalHeader}>
-                <Text style={[styles.modalTitle, { color: theme.text.primary }]}>Select Currency</Text>
+                <Text style={[styles.modalTitle, { color: theme.text.primary }]}>{t('currency.select')}</Text>
                 <Pressable onPress={() => setCurrencyPickerVisible(false)}>
                   <Ionicons name="close" size={24} color={theme.text.secondary} />
                 </Pressable>
@@ -585,7 +587,7 @@ function AddExpenseScreen() {
                   backgroundColor: theme.background,
                   color: theme.text.primary,
                 }]}
-                placeholder="Search currencies..."
+                placeholder={t('currency.search')}
                 value={currencySearch}
                 onChangeText={setCurrencySearch}
                 placeholderTextColor={theme.text.tertiary}

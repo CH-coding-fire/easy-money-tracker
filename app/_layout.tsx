@@ -8,6 +8,7 @@ import { Toast } from '../src/components/Toast';
 import { useUIStore } from '../src/store/uiStore';
 import * as SystemUI from 'expo-system-ui';
 import { useTheme } from '../src/hooks/useTheme';
+import '../src/i18n'; // Initialize i18n
 
 const queryClient = new QueryClient({
   defaultOptions: {

@@ -15,11 +15,13 @@ import { ErrorBoundary } from '../src/components/ErrorBoundary';
 import { useCategories } from '../src/hooks/useCategories';
 import { useSettings, useSaveSettings } from '../src/hooks/useSettings';
 import { useTheme } from '../src/hooks/useTheme';
+import { useI18n } from '../src/hooks/useI18n';
 import { Category, TransactionType } from '../src/types';
 import { SPACING, FONT_SIZE, BORDER_RADIUS } from '../src/constants/spacing';
 import { logger } from '../src/utils/logger';
 import { useUIStore } from '../src/store/uiStore';
 import { UNCLASSIFIED_NAME } from '../src/utils/categoryHelpers';
+import { translateCategoryName } from '../src/utils/categoryTranslation';
 
 const TAG = 'FrequentCategoriesScreen';
 
@@ -69,6 +71,7 @@ function CategoryTreeRow({
   isFrequent,
   toggleFrequent,
   theme,
+  t,
 }: {
   cat: Category;
   parentPath: string[];
@@ -78,6 +81,7 @@ function CategoryTreeRow({
   isFrequent: (path: string[]) => boolean;
   toggleFrequent: (path: string[]) => void;
   theme: ReturnType<typeof useTheme>;
+  t: (key: string) => string;
 }) {
   const currentPath = [...parentPath, cat.name];
   const hasChildren = !!(cat.children && cat.children.length > 0);
@@ -117,7 +121,7 @@ function CategoryTreeRow({
               ]}
               numberOfLines={1}
             >
-              {cat.name}
+              {translateCategoryName(cat.name, t)}
             </Text>
             {hasChildren && (
               <Text style={[styles.catSubCount, { color: theme.text.tertiary }]}>
@@ -154,6 +158,7 @@ function CategoryTreeRow({
           isFrequent={isFrequent}
           toggleFrequent={toggleFrequent}
           theme={theme}
+          t={t}
         />
       ))}
     </>
@@ -168,6 +173,7 @@ function FrequentCategoriesScreen() {
   const saveMutation = useSaveSettings();
   const { showToast } = useUIStore();
   const theme = useTheme();
+  const { t } = useI18n();
 
   const [catType, setCatType] = useState<TransactionType>('expense');
   const [searchQuery, setSearchQuery] = useState('');
@@ -203,16 +209,18 @@ function FrequentCategoriesScreen() {
 
   const isSearching = searchQuery.trim().length > 0;
 
-  // Filter flattened categories by search keyword
+  // Filter flattened categories by search keyword (matches English and translated names)
   const searchResults = useMemo(() => {
     if (!searchQuery.trim()) return [];
     const q = searchQuery.trim().toLowerCase();
     return allFlat.filter(
       ({ path }) =>
         path[path.length - 1].toLowerCase().includes(q) ||
-        path.join(' > ').toLowerCase().includes(q),
+        translateCategoryName(path[path.length - 1], t).toLowerCase().includes(q) ||
+        path.join(' > ').toLowerCase().includes(q) ||
+        path.map((s) => translateCategoryName(s, t)).join(' > ').toLowerCase().includes(q),
     );
-  }, [searchQuery, allFlat]);
+  }, [searchQuery, allFlat, t]);
 
   function toggleExpand(id: string) {
     setExpandedIds((prev) => {
@@ -272,8 +280,8 @@ function FrequentCategoriesScreen() {
       <View style={[styles.header, { borderBottomColor: theme.divider, backgroundColor: theme.background }]}>
         <SegmentedControl<TransactionType>
           options={[
-            { label: 'Expense', value: 'expense' },
-            { label: 'Income', value: 'income' },
+            { label: t('add.expense'), value: 'expense' },
+            { label: t('add.income'), value: 'income' },
           ]}
           selected={catType}
           onSelect={(v) => {
@@ -285,10 +293,10 @@ function FrequentCategoriesScreen() {
 
         {/* Selected frequent categories */}
         <Text style={[styles.sectionLabel, { color: theme.text.primary }]}>
-          Frequent Categories
+          {t('frequentCategories.title')}
         </Text>
         <Text style={[styles.sectionHint, { color: theme.text.tertiary }]}>
-          These appear as quick-pick tags in the Add screen.
+          {t('frequentCategories.hint')}
         </Text>
 
         {frequentList.length > 0 ? (
@@ -297,7 +305,7 @@ function FrequentCategoriesScreen() {
               <View key={pathKey(path)} style={[styles.chip, { backgroundColor: `${theme.primary}20` }]}>
                 <Text style={styles.chipIcon}>{findIcon(path)}</Text>
                 <Text style={[styles.chipLabel, { color: theme.primary }]} numberOfLines={1}>
-                  {frequentDisplayLabel(path)}
+                  {translateCategoryName(frequentDisplayLabel(path), t)}
                 </Text>
                 <TouchableOpacity
                   style={styles.chipRemove}
@@ -312,17 +320,17 @@ function FrequentCategoriesScreen() {
         ) : (
           <View style={[styles.emptyChips, { backgroundColor: theme.background, borderColor: theme.border }]}>
             <Text style={[styles.emptyChipsText, { color: theme.text.tertiary }]}>
-              No frequent categories yet. Tap categories below to add them.
+              {t('frequentCategories.emptyHint')}
             </Text>
           </View>
         )}
 
         {/* All categories header */}
         <Text style={[styles.sectionLabel, { marginTop: SPACING.md, color: theme.text.primary }]}>
-          All Categories
+          {t('category.allCategories')}
         </Text>
         <Text style={[styles.sectionHint, { color: theme.text.tertiary }]}>
-          Tap ▶ to expand subcategories. Tap + to toggle as frequent.
+          {t('frequentCategories.tapHint')}
         </Text>
 
         {/* Search bar */}
@@ -330,7 +338,7 @@ function FrequentCategoriesScreen() {
           <Ionicons name="search" size={16} color={theme.text.tertiary} style={{ marginRight: SPACING.xs }} />
           <TextInput
             style={[styles.searchInput, { color: theme.text.primary }]}
-            placeholder="Search categories..."
+            placeholder={t('category.searchCategories')}
             placeholderTextColor={theme.text.tertiary}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -380,11 +388,11 @@ function FrequentCategoriesScreen() {
                     ]}
                     numberOfLines={1}
                   >
-                    {item.path[item.path.length - 1]}
+                    {translateCategoryName(item.path[item.path.length - 1], t)}
                   </Text>
                   {item.path.length > 1 && (
                     <Text style={[styles.catPathHint, { color: theme.text.tertiary }]} numberOfLines={1}>
-                      {item.path.slice(0, -1).join(' > ')}
+                      {item.path.slice(0, -1).map((s) => translateCategoryName(s, t)).join(' > ')}
                     </Text>
                   )}
                   {item.hasChildren && (
@@ -425,6 +433,7 @@ function FrequentCategoriesScreen() {
               isFrequent={isFrequent}
               toggleFrequent={toggleFrequent}
               theme={theme}
+              t={t}
             />
           ))}
         </ScrollView>

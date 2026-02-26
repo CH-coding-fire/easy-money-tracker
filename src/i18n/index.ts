@@ -1,53 +1,60 @@
-// ── Minimal i18n (key-value per language) ──────────────────────────────────
-// For MVP, we use English strings directly. This file provides the structure
-// for future translation support.
+import i18n from 'i18next';
+import { initReactI18next } from 'react-i18next';
 
-const translations: Record<string, Record<string, string>> = {
-  'en-US': {
-    'tab.add': 'Add',
-    'tab.stats': 'Statistics',
-    'tab.records': 'Records',
-    'tab.settings': 'Settings',
-    'add.title': 'Add Transaction',
-    'add.expense': 'Expense',
-    'add.income': 'Income',
-    'add.amount': 'Amount',
-    'add.category': 'Category',
-    'add.date': 'Date',
-    'add.recurring': 'Recurring',
-    'add.oneOff': 'One-off',
-    'add.title_field': 'Title (optional)',
-    'add.description': 'Description (optional)',
-    'add.save': 'Save',
-    'stats.title': 'Statistics',
-    'records.title': 'Edit Records',
-    'records.search': 'Search records...',
-    'settings.title': 'Settings',
-    'settings.language': 'Language',
-    'settings.export': 'Export Data',
-    'settings.import': 'Import Data',
-    'settings.debug': 'Debug Mode',
-    'onboarding.welcome': 'Welcome to Easy Money Tracker!',
-    'onboarding.language': 'Choose your language',
-    'onboarding.currency': 'Set your main currency',
-    'onboarding.done': 'Get Started',
-    'common.cancel': 'Cancel',
-    'common.save': 'Save',
-    'common.delete': 'Delete',
-    'common.edit': 'Edit',
-    'common.back': 'Back',
-    'common.loading': 'Loading...',
-    'common.empty': 'No data yet',
-    'common.error': 'An error occurred',
-  },
-};
+// Import all translation files
+import enUS from './locales/en-US.json';
+import enUK from './locales/en-UK.json';
+import enAU from './locales/en-AU.json';
+import es from './locales/es.json';
+import fr from './locales/fr.json';
+import de from './locales/de.json';
+import it from './locales/it.json';
+import ptBR from './locales/pt-BR.json';
+import ja from './locales/ja.json';
+import ko from './locales/ko.json';
+import zhCN from './locales/zh-CN.json';
+import zhTW from './locales/zh-TW.json';
+import zhHK from './locales/zh-HK.json';
+import hi from './locales/hi.json';
+import ar from './locales/ar.json';
+import ru from './locales/ru.json';
+import nl from './locales/nl.json';
+import sv from './locales/sv.json';
+import pl from './locales/pl.json';
 
-let currentLanguage = 'en-US';
+// Configure i18next
+i18n
+  .use(initReactI18next)
+  .init({
+    resources: {
+      'en-US': { translation: enUS },
+      'en-UK': { translation: enUK },
+      'en-AU': { translation: enAU },
+      'es': { translation: es },
+      'fr': { translation: fr },
+      'de': { translation: de },
+      'it': { translation: it },
+      'pt-BR': { translation: ptBR },
+      'ja': { translation: ja },
+      'ko': { translation: ko },
+      'zh-CN': { translation: zhCN },
+      'zh-TW': { translation: zhTW },
+      'zh-HK': { translation: zhHK },
+      'hi': { translation: hi },
+      'ar': { translation: ar },
+      'ru': { translation: ru },
+      'nl': { translation: nl },
+      'sv': { translation: sv },
+      'pl': { translation: pl },
+    },
+    lng: 'en-US', // default language
+    fallbackLng: 'en-US',
+    interpolation: {
+      escapeValue: false, // React already escapes values
+    },
+    react: {
+      useSuspense: false, // Important for React Native
+    },
+  });
 
-export function setLanguage(lang: string) {
-  currentLanguage = lang;
-}
-
-export function t(key: string): string {
-  return translations[currentLanguage]?.[key] ?? translations['en-US']?.[key] ?? key;
-}
+export default i18n;

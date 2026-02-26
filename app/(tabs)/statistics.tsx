@@ -23,15 +23,19 @@ import { BORDER_RADIUS, FONT_SIZE, SPACING } from '../../src/constants/spacing';
 import { useFxRates } from '../../src/hooks/useFx';
 import { useSettings } from '../../src/hooks/useSettings';
 import { useTheme } from '../../src/hooks/useTheme';
+import { useI18n } from '../../src/hooks/useI18n';
 import { useTransactions } from '../../src/hooks/useTransactions';
 import { useUIStore } from '../../src/store/uiStore';
 import { DateRangePreset, StatsMode } from '../../src/types';
 import {
+    formatISODate,
     formatDateRange,
     getDateRange,
+    parseLocalDate,
     shiftDateRange
 } from '../../src/utils/dateHelpers';
 import { convertCurrency } from '../../src/utils/fxConvert';
+import { translateCategoryName } from '../../src/utils/categoryTranslation';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CHART_WIDTH = SCREEN_WIDTH - SPACING.lg * 4;
@@ -49,21 +53,43 @@ function formatYAxisLabel(val: string): string {
   return n % 1 === 0 ? String(n) : n.toFixed(1);
 }
 
-const DATE_PRESETS: { label: string; value: DateRangePreset }[] = [
-  { label: 'Today', value: 'today' },
-  { label: 'Week', value: 'this_week' },
-  { label: 'Month', value: 'this_month' },
-  { label: 'Year', value: 'this_year' },
-  { label: '7d', value: 'last_7' },
-  { label: '30d', value: 'last_30' },
-  { label: '365d', value: 'last_365' },
+// Will be populated with translations in the component
+const DATE_PRESET_VALUES: DateRangePreset[] = [
+  'today', 'this_week', 'this_month', 'this_year', 'last_7', 'last_30', 'last_365'
 ];
+
+type TrendUnit = 'day' | 'week' | 'month' | 'year';
+
+const TREND_UNIT_BY_PRESET: Record<DateRangePreset, TrendUnit> = {
+  today: 'day',
+  this_week: 'week',
+  this_month: 'month',
+  this_year: 'year',
+  last_7: 'day',
+  last_30: 'day',
+  last_365: 'month',
+};
+
+// Removed static titles, will use t() directly in component
+
+function formatTrendXAxisLabel(date: string, unit: TrendUnit): string {
+  if (unit === 'year') return date.slice(0, 4);
+  if (unit === 'month') return `${date.slice(0, 4)}-\n${date.slice(5, 7)}`;
+  return `${date.slice(0, 4)}-\n${date.slice(5)}`;
+}
+
+function getTrendLabelWidth(unit: TrendUnit): number {
+  if (unit === 'year') return 42;
+  if (unit === 'month') return 56;
+  return 72;
+}
 
 function StatisticsScreen() {
   const router = useRouter();
   const transactions = useTransactions();
   const settings = useSettings();
   const theme = useTheme();
+  const { t } = useI18n();
   const { data: fxCache, isLoading: fxLoading, isFetching: fxFetching, isError: fxError, forceRefresh: fxRefresh } = useFxRates();
   const [fxRefreshing, setFxRefreshing] = useState(false);
   const [showFxRates, setShowFxRates] = useState(false);
@@ -78,6 +104,10 @@ function StatisticsScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
 
   const [dateRange, setDateRange] = useState(
+    getDateRange(statsDatePreset, settings.weekStartsOn)
+  );
+  const [trendDatePreset, setTrendDatePreset] = useState<DateRangePreset>(statsDatePreset);
+  const [trendDateRange, setTrendDateRange] = useState(
     getDateRange(statsDatePreset, settings.weekStartsOn)
   );
 
@@ -99,6 +129,16 @@ function StatisticsScreen() {
   function handleShift(direction: 'prev' | 'next') {
     const newRange = shiftDateRange(dateRange, direction, statsDatePreset, settings.weekStartsOn);
     setDateRange(newRange);
+  }
+
+  function handleTrendPresetChange(preset: DateRangePreset) {
+    setTrendDatePreset(preset);
+    setTrendDateRange(getDateRange(preset, settings.weekStartsOn));
+  }
+
+  function handleTrendShift(direction: 'prev' | 'next') {
+    const newRange = shiftDateRange(trendDateRange, direction, trendDatePreset, settings.weekStartsOn);
+    setTrendDateRange(newRange);
   }
 
   // Currencies involved in ALL transactions within the date range (regardless of expense/income filter)
@@ -129,6 +169,28 @@ function StatisticsScreen() {
       }));
   }, [transactions, statsMode, dateRange, statsCurrency, fxCache]);
 
+  const trendUnit = TREND_UNIT_BY_PRESET[trendDatePreset];
+  const trendTitle = trendUnit === 'day' ? t('stats.dailyTrend')
+                   : trendUnit === 'week' ? t('stats.weeklyTrend')
+                   : trendUnit === 'month' ? t('stats.monthlyTrend')
+                   : t('stats.yearlyTrend');
+
+  const trendFilteredTx = useMemo(() => {
+    const type = statsMode === 'expense_pie' ? 'expense'
+               : statsMode === 'income_pie' ? 'income'
+               : null;
+
+    return transactions
+      .filter((t) => {
+        if (type && t.type !== type) return false;
+        return t.date >= trendDateRange.start && t.date <= trendDateRange.end;
+      })
+      .map((t) => ({
+        ...t,
+        convertedAmount: convertCurrency(t.amount, t.currency, statsCurrency, fxCache),
+      }));
+  }, [transactions, statsMode, trendDateRange, statsCurrency, fxCache]);
+
   const total = useMemo(
     () => filteredTx.reduce((sum, t) => sum + t.convertedAmount, 0),
     [filteredTx]
@@ -155,37 +217,48 @@ function StatisticsScreen() {
       children: Record<string, { amount: number; children: Record<string, number> }>;
     }> = {};
 
-    for (const t of filteredTx) {
-      const cat1 = t.categoryPath[0] ?? 'Uncategorized';
+    for (const tx of filteredTx) {
+      const cat1 = tx.categoryPath[0] ?? 'Uncategorized';
       if (!grouped[cat1]) grouped[cat1] = { amount: 0, children: {} };
-      grouped[cat1].amount += t.convertedAmount;
+      grouped[cat1].amount += tx.convertedAmount;
 
       // When categoryPath is just [cat1] (length 1), treat it as [cat1, "Uncategorized"]
       // so that parent-only transactions appear correctly in the subcategory drill-down.
-      const cat2 = t.categoryPath.length > 1 ? t.categoryPath[1] : 'Uncategorized';
+      const cat2 = tx.categoryPath.length > 1 ? tx.categoryPath[1] : 'Uncategorized';
       if (!grouped[cat1].children[cat2]) grouped[cat1].children[cat2] = { amount: 0, children: {} };
-      grouped[cat1].children[cat2].amount += t.convertedAmount;
+      grouped[cat1].children[cat2].amount += tx.convertedAmount;
 
-      if (t.categoryPath.length > 2) {
-        const cat3 = t.categoryPath[2];
+      if (tx.categoryPath.length > 2) {
+        const cat3 = tx.categoryPath[2];
         grouped[cat1].children[cat2].children[cat3] =
-          (grouped[cat1].children[cat2].children[cat3] ?? 0) + t.convertedAmount;
+          (grouped[cat1].children[cat2].children[cat3] ?? 0) + tx.convertedAmount;
       }
     }
 
     return Object.entries(grouped)
       .map(([name, data], i) => ({
         value: Math.round(data.amount * 100) / 100,
-        text: name,
+        text: translateCategoryName(name, t),
         color: theme.chartColors[i % theme.chartColors.length],
+        // Translate child keys so drill-down labels are also localized
         children: Object.fromEntries(
-          Object.entries(data.children).map(([k, v]) => [k, v.amount]),
+          Object.entries(data.children).map(([k, v]) => [translateCategoryName(k, t), v.amount]),
         ),
-        // nested children for Level 3 drill-down
-        _l3: data.children,
+        // nested children for Level 3 drill-down (keys translated so lookup works)
+        _l3: Object.fromEntries(
+          Object.entries(data.children).map(([k, v]) => [
+            translateCategoryName(k, t),
+            {
+              amount: v.amount,
+              children: Object.fromEntries(
+                Object.entries(v.children).map(([k2, v2]) => [translateCategoryName(k2, t), v2]),
+              ),
+            },
+          ]),
+        ),
       }))
       .sort((a, b) => b.value - a.value);
-  }, [filteredTx, statsMode, theme.chartColors]);
+  }, [filteredTx, statsMode, theme.chartColors, t]);
 
   // ── Drill-down pie data ──────────────────────────────────────────────────
 
@@ -234,19 +307,95 @@ function StatisticsScreen() {
 
   const barData = useMemo(() => {
     if (statsMode === 'balance_line') return [];
-    // Group by date for stacked bars
+    // Group into buckets based on selected trend unit.
     const grouped: Record<string, number> = {};
-    for (const t of filteredTx) {
-      grouped[t.date] = (grouped[t.date] ?? 0) + t.convertedAmount;
+
+    for (const t of trendFilteredTx) {
+      const d = parseLocalDate(t.date);
+      let bucket = new Date(d);
+
+      if (trendUnit === 'week') {
+        const dow = bucket.getDay();
+        const diff = settings.weekStartsOn === 'monday'
+          ? (dow === 0 ? -6 : 1) - dow
+          : -dow;
+        bucket.setDate(bucket.getDate() + diff);
+      } else if (trendUnit === 'month') {
+        bucket = new Date(bucket.getFullYear(), bucket.getMonth(), 1);
+      } else if (trendUnit === 'year') {
+        bucket = new Date(bucket.getFullYear(), 0, 1);
+      }
+
+      const key = formatISODate(bucket);
+      grouped[key] = (grouped[key] ?? 0) + t.convertedAmount;
     }
-    const entries = Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
-    const showEveryNth = entries.length > 10 ? Math.ceil(entries.length / 6) : 1;
-    return entries.map(([date, value], idx) => ({
-      value: Math.round(value * 100) / 100,
-      label: idx % showEveryNth === 0 ? date.slice(5) : '',
-      frontColor: statsMode === 'expense_pie' ? theme.error : theme.success,
-    }));
-  }, [filteredTx, statsMode, theme.error, theme.success]);
+
+    const start = parseLocalDate(trendDateRange.start);
+    const end = parseLocalDate(trendDateRange.end);
+    const cursor = new Date(start);
+
+    if (trendUnit === 'week') {
+      const dow = cursor.getDay();
+      const diff = settings.weekStartsOn === 'monday'
+        ? (dow === 0 ? -6 : 1) - dow
+        : -dow;
+      cursor.setDate(cursor.getDate() + diff);
+    } else if (trendUnit === 'month') {
+      cursor.setDate(1);
+    } else if (trendUnit === 'year') {
+      cursor.setMonth(0, 1);
+    }
+
+    const entries: [string, number][] = [];
+    while (cursor <= end) {
+      const key = formatISODate(cursor);
+      entries.push([key, Math.round((grouped[key] ?? 0) * 100) / 100]);
+
+      if (trendUnit === 'day') {
+        cursor.setDate(cursor.getDate() + 1);
+      } else if (trendUnit === 'week') {
+        cursor.setDate(cursor.getDate() + 7);
+      } else if (trendUnit === 'month') {
+        cursor.setMonth(cursor.getMonth() + 1, 1);
+      } else {
+        cursor.setFullYear(cursor.getFullYear() + 1, 0, 1);
+      }
+    }
+
+    const showEveryNth = entries.length > 12 ? Math.ceil(entries.length / 6) : 1;
+    const chartSpacing = 4;
+    const barWidth = Math.max(8, Math.min(24, CHART_WIDTH / Math.max(entries.length, 1) - chartSpacing));
+    const baseLabelWidth = barWidth + chartSpacing;
+
+    return entries.map(([date, value], idx) => {
+      const label = idx % showEveryNth === 0 ? formatTrendXAxisLabel(date, trendUnit) : '';
+      const customLabelWidth = getTrendLabelWidth(trendUnit);
+      const centerFixOffset = -(customLabelWidth - baseLabelWidth) / 2;
+
+      return {
+        value: Math.round(value * 100) / 100,
+        label,
+        labelComponent: label
+          ? () => (
+              <View style={{ width: customLabelWidth, marginLeft: centerFixOffset }}>
+                <Text style={[styles.axisLabel, styles.trendAxisLabel, { color: theme.text.tertiary }]}>
+                  {label}
+                </Text>
+              </View>
+            )
+          : undefined,
+        frontColor: statsMode === 'expense_pie' ? theme.error : theme.success,
+      };
+    });
+  }, [
+    trendFilteredTx,
+    trendDateRange,
+    trendUnit,
+    settings.weekStartsOn,
+    statsMode,
+    theme.error,
+    theme.success,
+  ]);
 
   // ── Balance bar chart data ───────────────────────────────────────────────
 
@@ -280,9 +429,9 @@ function StatisticsScreen() {
         {/* Mode selector */}
         <SegmentedControl<StatsMode>
           options={[
-            { label: 'Expense', value: 'expense_pie' },
-            { label: 'Income', value: 'income_pie' },
-            { label: 'Balance', value: 'balance_line' },
+            { label: t('stats.expense'), value: 'expense_pie' },
+            { label: t('stats.income'), value: 'income_pie' },
+            { label: t('stats.balance'), value: 'balance_line' },
           ]}
           selected={statsMode}
           onSelect={(m) => setStatsMode(m)}
@@ -290,24 +439,24 @@ function StatisticsScreen() {
 
         {/* Date range */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.presetScroll}>
-          {DATE_PRESETS.map((p) => {
-            const isActive = statsDatePreset === p.value;
+          {DATE_PRESET_VALUES.map((preset) => {
+            const isActive = statsDatePreset === preset;
             return (
               <TouchableOpacity
-                key={p.value}
+                key={preset}
                 style={[
                   styles.presetChip,
                   { backgroundColor: `${theme.primary}15` },
                   isActive && { backgroundColor: theme.primary },
                 ]}
-                onPress={() => handlePresetChange(p.value)}
+                onPress={() => handlePresetChange(preset)}
               >
                 <Text style={[
                   styles.presetText,
                   { color: theme.primary },
                   isActive && { color: '#fff' },
                 ]}>
-                  {p.label}
+                  {t(`dateRange.${preset}`)}
                 </Text>
               </TouchableOpacity>
             );
@@ -363,15 +512,15 @@ function StatisticsScreen() {
               {(fxFetching || fxRefreshing) ? (
                 <View style={styles.fxLoadingRow}>
                   <ActivityIndicator size="small" color={theme.primary} style={{ marginRight: 4 }} />
-                  <Text style={[styles.fxInfoText, { color: theme.text.tertiary }]}>Updating...</Text>
+                  <Text style={[styles.fxInfoText, { color: theme.text.tertiary }]}>{t('stats.updating')}</Text>
                 </View>
               ) : fxError ? (
                 <Text style={[styles.fxInfoText, { color: theme.error }]}>
-                  Update failed • using previous rates
+                  {t('stats.updateFailed')}
                 </Text>
               ) : fxCache.lastUpdatedAt ? (
                 <Text style={[styles.fxInfoText, { color: theme.text.tertiary }]}>
-                  Updated: {new Date(fxCache.lastUpdatedAt).toLocaleString('en-US', { 
+                  {t('stats.updated')}: {new Date(fxCache.lastUpdatedAt).toLocaleString('en-US', { 
                     month: 'short', 
                     day: 'numeric', 
                     hour: '2-digit', 
@@ -379,7 +528,7 @@ function StatisticsScreen() {
                   })} • Source: frankfurter.app
                 </Text>
               ) : (
-                <Text style={[styles.fxInfoText, { color: theme.text.tertiary }]}>No FX rates loaded</Text>
+                <Text style={[styles.fxInfoText, { color: theme.text.tertiary }]}>{t('stats.noFxRates')}</Text>
               )}
             </View>
             <View style={styles.fxActions}>
@@ -413,7 +562,7 @@ function StatisticsScreen() {
           {showFxRates && fxCache.lastUpdatedAt && (
             <View style={[styles.fxRatesBox, { backgroundColor: theme.background }]}>
               <Text style={[styles.fxRatesTitle, { color: theme.text.tertiary }]}>
-                Rates (base: {statsCurrency})
+                {t('stats.rates', { base: statsCurrency })}
               </Text>
               <View style={styles.fxRatesGrid}>
                 {involvedCurrencies
@@ -431,7 +580,7 @@ function StatisticsScreen() {
                   })}
                 {involvedCurrencies.filter((c) => c !== statsCurrency).length === 0 && (
                   <Text style={[styles.fxRateItem, { color: theme.text.secondary }]}>
-                    All transactions are in {statsCurrency}
+                    {t('stats.allTransactionsIn', { currency: statsCurrency })}
                   </Text>
                 )}
               </View>
@@ -443,13 +592,13 @@ function StatisticsScreen() {
         {statsMode !== 'balance_line' && (
           <Card style={styles.totalCard}>
             <Text style={[styles.totalCardTitle, { color: theme.text.tertiary }]}>
-              Total {statsMode === 'expense_pie' ? 'Expense' : 'Income'}
+              {t('stats.total')} {statsMode === 'expense_pie' ? t('stats.expense') : t('stats.income')}
             </Text>
             
             <View style={styles.totalCardContent}>
               {/* Left: Original amounts */}
               <View style={styles.totalCardLeft}>
-                <Text style={[styles.totalCardSectionLabel, { color: theme.text.tertiary }]}>Original</Text>
+                <Text style={[styles.totalCardSectionLabel, { color: theme.text.tertiary }]}>{t('stats.original')}</Text>
                 {originalCurrencyTotals.length > 0 && (
                   <View style={styles.originalAmountsList}>
                     {originalCurrencyTotals.map(({ currency, amount }) => (
@@ -466,7 +615,7 @@ function StatisticsScreen() {
 
               {/* Right: Converted total */}
               <View style={styles.totalCardRight}>
-                <Text style={[styles.totalCardSectionLabel, { color: theme.text.tertiary }]}>Total</Text>
+                <Text style={[styles.totalCardSectionLabel, { color: theme.text.tertiary }]}>{t('stats.total')}</Text>
                 <Text style={[styles.totalAmount, { color: statsMode === 'expense_pie' ? theme.error : theme.success }]}>
                   {statsCurrency}
                 </Text>
@@ -483,7 +632,7 @@ function StatisticsScreen() {
           <>
             {/* Pie chart – Level 1 (always visible) */}
             <Card style={styles.chartCard}>
-              <Text style={[styles.chartTitle, { color: theme.text.primary }]}>By Category</Text>
+              <Text style={[styles.chartTitle, { color: theme.text.primary }]}>{t('stats.byCategory')}</Text>
               {pieData.length > 0 ? (
                 <View style={{ marginHorizontal: -PIE_BLEED }}>
                   <PieChartWithLabels
@@ -505,7 +654,7 @@ function StatisticsScreen() {
                   />
                 </View>
               ) : (
-                <Text style={[styles.noData, { color: theme.text.tertiary }]}>No data for this period</Text>
+                <Text style={[styles.noData, { color: theme.text.tertiary }]}>{t('stats.noData')}</Text>
               )}
             </Card>
 
@@ -526,7 +675,7 @@ function StatisticsScreen() {
                     <Text style={[styles.chartTitle, { color: theme.text.primary }]}>
                       {statsDrillCategory}
                     </Text>
-                    <Text style={[styles.drillSubtitle, { color: theme.text.tertiary }]}>Subcategories</Text>
+                    <Text style={[styles.drillSubtitle, { color: theme.text.tertiary }]}>{t('stats.drillDown')}</Text>
                   </View>
                   <TouchableOpacity
                     onPress={() => setStatsDrillCategory(null)}
@@ -573,7 +722,7 @@ function StatisticsScreen() {
                       {statsDrillSubCategory}
                     </Text>
                     <Text style={[styles.drillSubtitle, { color: theme.text.tertiary }]}>
-                      {statsDrillCategory} {'>'} Sub-subcategories
+                      {statsDrillCategory} {'>'} {t('stats.drillDown')}
                     </Text>
                   </View>
                   <TouchableOpacity
@@ -599,8 +748,43 @@ function StatisticsScreen() {
             {/* Bar chart */}
             <Card style={styles.chartCard}>
               <View style={styles.chartTitleRow}>
-                <Text style={[styles.chartTitle, { color: theme.text.primary }]}>Daily Trend</Text>
+                <Text style={[styles.chartTitle, { color: theme.text.primary }]}>{trendTitle}</Text>
                 <Text style={[styles.chartCurrency, { color: theme.primary, backgroundColor: `${theme.primary}20` }]}>{statsCurrency}</Text>
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.trendPresetScroll}>
+                {DATE_PRESET_VALUES.map((preset) => {
+                  const isActive = trendDatePreset === preset;
+                  return (
+                    <TouchableOpacity
+                      key={`trend-${preset}`}
+                      style={[
+                        styles.presetChip,
+                        { backgroundColor: `${theme.primary}15` },
+                        isActive && { backgroundColor: theme.primary },
+                      ]}
+                      onPress={() => handleTrendPresetChange(preset)}
+                    >
+                      <Text style={[
+                        styles.presetText,
+                        { color: theme.primary },
+                        isActive && { color: '#fff' },
+                      ]}>
+                        {t(`dateRange.${preset}`)}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+              <View style={styles.trendDateNav}>
+                <TouchableOpacity onPress={() => handleTrendShift('prev')} style={styles.navArrowBtn}>
+                  <Ionicons name="chevron-back" size={18} color={theme.primary} />
+                </TouchableOpacity>
+                <Text style={[styles.dateRangeText, { color: theme.text.secondary }]}>
+                  {formatDateRange(trendDateRange)}
+                </Text>
+                <TouchableOpacity onPress={() => handleTrendShift('next')} style={styles.navArrowBtn}>
+                  <Ionicons name="chevron-forward" size={18} color={theme.primary} />
+                </TouchableOpacity>
               </View>
               {barData.length > 0 ? (
                 <BarChart
@@ -608,6 +792,8 @@ function StatisticsScreen() {
                   barWidth={Math.max(8, Math.min(24, CHART_WIDTH / barData.length - 4))}
                   spacing={4}
                   height={180}
+                  xAxisTextNumberOfLines={2}
+                  xAxisLabelsHeight={36}
                   xAxisLabelTextStyle={[styles.axisLabel, { color: theme.text.tertiary }]}
                   yAxisTextStyle={[styles.axisLabel, { color: theme.text.tertiary }]}
                   yAxisLabelWidth={40}
@@ -621,7 +807,7 @@ function StatisticsScreen() {
                   yAxisColor={theme.border}
                 />
               ) : (
-                <Text style={[styles.noData, { color: theme.text.tertiary }]}>No data for this period</Text>
+                <Text style={[styles.noData, { color: theme.text.tertiary }]}>{t('stats.noData')}</Text>
               )}
             </Card>
           </>
@@ -862,4 +1048,17 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.xl,
   },
   axisLabel: { fontSize: 9 },
+  trendAxisLabel: {
+    textAlign: 'center',
+    lineHeight: 11,
+  },
+  trendPresetScroll: {
+    marginBottom: SPACING.xs,
+  },
+  trendDateNav: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: SPACING.sm,
+  },
 });

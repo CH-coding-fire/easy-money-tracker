@@ -16,8 +16,10 @@ import { ErrorBoundary } from '../../src/components/ErrorBoundary';
 import { useTransactions, useDeleteTransaction } from '../../src/hooks/useTransactions';
 import { useCategories } from '../../src/hooks/useCategories';
 import { useTheme } from '../../src/hooks/useTheme';
+import { useI18n } from '../../src/hooks/useI18n';
 import { Transaction, Category } from '../../src/types';
 import { UNCLASSIFIED_NAME } from '../../src/utils/categoryHelpers';
+import { translateCategoryPath } from '../../src/utils/categoryTranslation';
 import { SPACING, FONT_SIZE, BORDER_RADIUS } from '../../src/constants/spacing';
 import { logger } from '../../src/utils/logger';
 
@@ -26,6 +28,7 @@ const TAG = 'EditRecordsScreen';
 function EditRecordsScreen() {
   const router = useRouter();
   const theme = useTheme();
+  const { t } = useI18n();
   const transactions = useTransactions();
   const categories = useCategories();
   const deleteMutation = useDeleteTransaction();
@@ -84,12 +87,12 @@ function EditRecordsScreen() {
 
   function handleDelete(tx: Transaction) {
     Alert.alert(
-      'Delete Transaction',
-      `Delete ${tx.type} of ${tx.currency} ${tx.amount}?`,
+      t('records.deleteConfirm'),
+      t('records.deleteMessage', { type: tx.type, currency: tx.currency, amount: tx.amount }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: () => {
             deleteMutation.mutate(tx.id);
@@ -152,7 +155,7 @@ function EditRecordsScreen() {
               <Text style={[styles.txDate, { color: theme.text.tertiary }]}>{formatTxDateTime(item)}</Text>
             </View>
             <Text style={[styles.txCategory, { color: theme.text.secondary }]} numberOfLines={1}>
-              {item.categoryPath.join(' > ')}
+              {translateCategoryPath(item.categoryPath, t).join(' > ')}
             </Text>
             {item.title && (
               <Text style={[styles.txTitle, { color: theme.text.primary }]} numberOfLines={1}>{item.title}</Text>
@@ -163,7 +166,7 @@ function EditRecordsScreen() {
             {item.isRecurring && (
               <View style={styles.txRecurringRow}>
                 <Ionicons name="repeat" size={14} color={theme.warning} />
-                <Text style={[styles.txRecurring, { color: theme.warning }]}> Multi-times</Text>
+                <Text style={[styles.txRecurring, { color: theme.warning }]}> {t('transaction.multiTimes')}</Text>
               </View>
             )}
           </View>
@@ -189,7 +192,7 @@ function EditRecordsScreen() {
           backgroundColor: theme.cardBackground,
           color: theme.text.primary,
         }]}
-        placeholder="Search by title, category, amount, date..."
+        placeholder={t('records.search')}
         value={search}
         onChangeText={setSearch}
         placeholderTextColor={theme.text.tertiary}
@@ -214,12 +217,12 @@ function EditRecordsScreen() {
                 { color: theme.primary },
                 isActive && { color: '#fff' },
               ]}>
-                {type === 'all' ? 'All' : type === 'expense' ? 'Expense' : 'Income'}
+                {t(`records.${type}`)}
               </Text>
             </TouchableOpacity>
           );
         })}
-        <Text style={[styles.countText, { color: theme.text.tertiary }]}>{filtered.length} records</Text>
+        <Text style={[styles.countText, { color: theme.text.tertiary }]}>{filtered.length} {t('tab.records').toLowerCase()}</Text>
       </View>
 
       {/* Toggle row: Include future & Show time */}
@@ -235,7 +238,7 @@ function EditRecordsScreen() {
             color={includeFuture ? theme.primary : theme.text.tertiary}
           />
           <Text style={[styles.futureToggleText, { color: theme.text.secondary }]}>
-            Include future transactions
+            {t('records.includeFuture')}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -249,7 +252,7 @@ function EditRecordsScreen() {
             color={showTime ? theme.primary : theme.text.tertiary}
           />
           <Text style={[styles.futureToggleText, { color: theme.text.secondary }]}>
-            Show time
+            {t('records.showTime')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -264,10 +267,10 @@ function EditRecordsScreen() {
           <View style={styles.empty}>
             <Ionicons name="document-text-outline" size={48} color={theme.border} style={{ marginBottom: SPACING.md }} />
             <Text style={[styles.emptyText, { color: theme.text.secondary }]}>
-              {search ? 'No records match your search' : 'No records yet'}
+              {search ? t('records.noRecords') : t('common.empty')}
             </Text>
             {!search && (
-              <Text style={[styles.emptyHint, { color: theme.text.tertiary }]}>Add a transaction to get started</Text>
+              <Text style={[styles.emptyHint, { color: theme.text.tertiary }]}>{t('records.addToGetStarted')}</Text>
             )}
           </View>
         }

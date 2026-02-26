@@ -13,6 +13,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { SegmentedControl } from './SegmentedControl';
 import { Button } from './Button';
 import { useTheme } from '../hooks/useTheme';
+import { useI18n } from '../hooks/useI18n';
 import { SPACING, FONT_SIZE, BORDER_RADIUS } from '../constants/spacing';
 import { formatISODate, generateMultiDates } from '../utils/dateHelpers';
 
@@ -40,6 +41,7 @@ export function MultiTimesSheet({
   onCancel,
 }: MultiTimesSheetProps) {
   const theme = useTheme();
+  const { t } = useI18n();
   const [startDate, setStartDate] = useState(initialConfig?.startDate ?? initialDate);
   const [frequency, setFrequency] = useState<MultiTimesFrequency>(initialConfig?.frequency ?? 'monthly');
   const [countText, setCountText] = useState(String(initialConfig?.count ?? 2));
@@ -80,7 +82,7 @@ export function MultiTimesSheet({
         <View style={[styles.sheet, { backgroundColor: theme.cardBackground }]}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={[styles.title, { color: theme.text.primary }]}>Multi-times Setup</Text>
+            <Text style={[styles.title, { color: theme.text.primary }]}>{t('transaction.multiTimesSetup')}</Text>
             <Pressable onPress={onCancel} hitSlop={10}>
               <Ionicons name="close" size={24} color={theme.text.secondary} />
             </Pressable>
@@ -88,7 +90,7 @@ export function MultiTimesSheet({
 
           {/* Start Date */}
           <View style={styles.section}>
-            <Text style={[styles.label, { color: theme.text.secondary }]}>Start Date</Text>
+            <Text style={[styles.label, { color: theme.text.secondary }]}>{t('transaction.startDate')}</Text>
             <Pressable
               style={[styles.dateBtn, { backgroundColor: theme.background, borderColor: theme.border }]}
               onPress={() => setShowDatePicker(true)}
@@ -111,13 +113,13 @@ export function MultiTimesSheet({
 
           {/* Frequency */}
           <View style={styles.section}>
-            <Text style={[styles.label, { color: theme.text.secondary }]}>Repeat Every</Text>
+            <Text style={[styles.label, { color: theme.text.secondary }]}>{t('transaction.repeatEvery')}</Text>
             <SegmentedControl<MultiTimesFrequency>
               options={[
-                { label: 'Daily', value: 'daily' },
-                { label: 'Weekly', value: 'weekly' },
-                { label: 'Monthly', value: 'monthly' },
-                { label: 'Yearly', value: 'yearly' },
+                { label: t('frequency.daily'), value: 'daily' },
+                { label: t('frequency.weekly'), value: 'weekly' },
+                { label: t('frequency.monthly'), value: 'monthly' },
+                { label: t('frequency.yearly'), value: 'yearly' },
               ]}
               selected={frequency}
               onSelect={setFrequency}
@@ -126,7 +128,7 @@ export function MultiTimesSheet({
 
           {/* Count */}
           <View style={styles.section}>
-            <Text style={[styles.label, { color: theme.text.secondary }]}>How Many Times</Text>
+            <Text style={[styles.label, { color: theme.text.secondary }]}>{t('transaction.howManyTimes')}</Text>
             <View style={styles.countRow}>
               <Pressable
                 style={[styles.countBtn, { backgroundColor: theme.background, borderColor: theme.border }]}
@@ -172,13 +174,13 @@ export function MultiTimesSheet({
           {/* Buttons */}
           <View style={styles.buttons}>
             <Button
-              title="Cancel"
+              title={t('common.cancel')}
               variant="ghost"
               onPress={onCancel}
               style={{ flex: 1 }}
             />
             <Button
-              title="Confirm"
+              title={t('common.confirm')}
               variant="primary"
               onPress={handleConfirm}
               disabled={count < 2}

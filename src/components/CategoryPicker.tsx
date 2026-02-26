@@ -11,8 +11,10 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Category } from '../types';
 import { SPACING, BORDER_RADIUS, FONT_SIZE } from '../constants/spacing';
 import { useTheme } from '../hooks/useTheme';
+import { useI18n } from '../hooks/useI18n';
 import { useCategoryPickerStore } from '../store/categoryPickerStore';
 import { UNCLASSIFIED_NAME } from '../utils/categoryHelpers';
+import { translateCategoryName } from '../utils/categoryTranslation';
 
 /**
  * Display label for a frequent category path.
@@ -63,10 +65,13 @@ export function CategoryPicker({
   onEditCategories,
 }: CategoryPickerProps) {
   const theme = useTheme();
+  const { t } = useI18n();
   const router = useRouter();
   const setup = useCategoryPickerStore((s) => s.setup);
 
-  const selectedLabel = selectedPath.length > 0 ? selectedPath.join(' > ') : 'Select category';
+  const selectedLabel = selectedPath.length > 0
+    ? selectedPath.map((s) => translateCategoryName(s, t)).join(' > ')
+    : t('common.selectCategory');
 
   const openPicker = useCallback(() => {
     Keyboard.dismiss();
@@ -124,7 +129,7 @@ export function CategoryPicker({
                   ]}
                   numberOfLines={1}
                 >
-                  {frequentDisplayLabel(path)}
+                  {translateCategoryName(frequentDisplayLabel(path), t)}
                 </Text>
               </TouchableOpacity>
             );
@@ -139,14 +144,14 @@ export function CategoryPicker({
         onEditFrequent && (
           <View style={[styles.emptyFrequentRow, { backgroundColor: `${theme.primary}08`, borderColor: `${theme.primary}20` }]}>
             <Text style={[styles.emptyFrequentText, { color: theme.primary }]}>
-              No frequent categories yet. Tap to add.
+              {t('category.noFrequentHint')}
             </Text>
             <TouchableOpacity
               style={[styles.emptyFrequentBtn, { backgroundColor: `${theme.primary}15` }]}
               onPress={onEditFrequent}
             >
               <Ionicons name="add-circle-outline" size={18} color={theme.primary} />
-              <Text style={[styles.emptyFrequentBtnText, { color: theme.primary }]}>Add Frequent</Text>
+              <Text style={[styles.emptyFrequentBtnText, { color: theme.primary }]}>{t('category.addFrequent')}</Text>
             </TouchableOpacity>
           </View>
         )

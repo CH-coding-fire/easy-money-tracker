@@ -9,10 +9,11 @@ import {
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useTheme } from '../hooks/useTheme';
+import { useI18n } from '../hooks/useI18n';
 import { SPACING, FONT_SIZE, BORDER_RADIUS } from '../constants/spacing';
 
 const DAYS_OF_WEEK = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-const MONTH_NAMES = [
+const MONTH_NAMES_EN = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
@@ -36,6 +37,7 @@ function clampDay(day: number, year: number, month: number): number {
 
 export function CalendarPicker({ visible, value, onSelect, onCancel }: CalendarPickerProps) {
   const theme = useTheme();
+  const { t } = useI18n();
 
   // The "viewing" month/year (what month the calendar shows)
   const [viewYear, setViewYear] = useState(value.getFullYear());
@@ -125,7 +127,7 @@ export function CalendarPicker({ visible, value, onSelect, onCancel }: CalendarP
               <Ionicons name="chevron-back" size={22} color={theme.text.primary} />
             </Pressable>
             <Text style={[styles.monthLabel, { color: theme.text.primary }]}>
-              {MONTH_NAMES[viewMonth]} {viewYear}
+              {MONTH_NAMES_EN[viewMonth]} {viewYear}
             </Text>
             <Pressable onPress={goToNextMonth} hitSlop={12} style={styles.navBtn}>
               <Ionicons name="chevron-forward" size={22} color={theme.text.primary} />
@@ -186,7 +188,7 @@ export function CalendarPicker({ visible, value, onSelect, onCancel }: CalendarP
 
           {/* Cancel at the bottom */}
           <Pressable style={styles.cancelBtn} onPress={onCancel}>
-            <Text style={[styles.cancelText, { color: theme.text.secondary }]}>CANCEL</Text>
+            <Text style={[styles.cancelText, { color: theme.text.secondary }]}>{t('common.cancel').toUpperCase()}</Text>
           </Pressable>
         </Pressable>
       </Pressable>

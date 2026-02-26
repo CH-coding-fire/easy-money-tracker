@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Alert,
   Modal,
@@ -17,6 +17,9 @@ import {
   NestableScrollContainer,
   RenderItemParams,
 } from 'react-native-draggable-flatlist';
+// Access the library's internal scroll control context — the ONLY way to
+// reliably disable the outer scroll during L2/L3 drag handle long-press.
+import { useNestableScrollContainerContext } from 'react-native-draggable-flatlist/src/context/nestableScrollContainerContext';
 import { TouchableOpacity } from 'react-native-gesture-handler';
 import { Button } from '../src/components/Button';
 import { ErrorBoundary } from '../src/components/ErrorBoundary';
@@ -25,9 +28,11 @@ import { SegmentedControl } from '../src/components/SegmentedControl';
 import { BORDER_RADIUS, FONT_SIZE, SPACING } from '../src/constants/spacing';
 import { useCategories, useSaveCategories } from '../src/hooks/useCategories';
 import { useTheme } from '../src/hooks/useTheme';
+import { useI18n } from '../src/hooks/useI18n';
 import { useUIStore } from '../src/store/uiStore';
 import { Category, TransactionType } from '../src/types';
 import { isUnclassified, UNCLASSIFIED_NAME } from '../src/utils/categoryHelpers';
+import { translateCategoryName } from '../src/utils/categoryTranslation';
 import { logger } from '../src/utils/logger';
 import { generateUUID } from '../src/utils/uuid';
 
@@ -101,11 +106,36 @@ const ICON_OPTIONS = [
   },
 ];
 
+interface ScrollControl {
+  freeze: () => void;
+  unfreeze: () => void;
+}
+
+/**
+ * Bridge component rendered inside NestableScrollContainer.
+ * It exposes outer scroll enable/disable controls via context.
+ */
+function ScrollContextBridge({ controlRef }: { controlRef: React.MutableRefObject<ScrollControl | null> }) {
+  const ctx = useNestableScrollContainerContext();
+  if (ctx) {
+    controlRef.current = {
+      freeze: () => {
+        ctx.setOuterScrollEnabled(false);
+      },
+      unfreeze: () => {
+        ctx.setOuterScrollEnabled(true);
+      },
+    };
+  }
+  return null;
+}
+
 function CategoryEditScreen() {
   const categories = useCategories();
   const saveMutation = useSaveCategories();
   const { showToast } = useUIStore();
   const theme = useTheme();
+  const { t } = useI18n();
 
   const [catType, setCatType] = useState<TransactionType>('expense');
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -114,6 +144,11 @@ function CategoryEditScreen() {
   const [editIcon, setEditIcon] = useState('📁');
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
   const [addParentPath, setAddParentPath] = useState<string[]>([]);
+
+  // Ref to the library's scroll control (populated by ScrollContextBridge)
+  const scrollControlRef = useRef<ScrollControl | null>(null);
+  // Track whether a child drag is active so onPressOut doesn't re-enable scroll mid-drag
+  const childDragActiveRef = useRef(false);
 
   const topLevelItems = catType === 'expense' ? categories.expense : categories.income;
 
@@ -202,16 +237,7 @@ function CategoryEditScreen() {
 
   // ── drag handlers ────────────────────────────────────────────────────────
 
-  // #region agent log
-  const debugLog = (location: string, message: string, data: Record<string, unknown> = {}, hypothesisId: string = '') => {
-    fetch('http://127.0.0.1:7242/ingest/3569388c-cf79-4ba9-a84e-1cad357869c3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location,message,data,timestamp:Date.now(),hypothesisId})}).catch(()=>{});
-  };
-  // #endregion
-
   function handleRootDragEnd({ data }: { data: Category[] }) {
-    // #region agent log
-    debugLog('category-edit.tsx:handleRootDragEnd','L1 drag end fired',{dataLen:data.length},'B');
-    // #endregion
     if (catType === 'expense') {
       saveAll(data, structuredClone(categories.income));
     } else {
@@ -220,9 +246,9 @@ function CategoryEditScreen() {
   }
 
   function handleChildDragEnd(parentId: string, newChildren: Category[]) {
-    // #region agent log
-    debugLog('category-edit.tsx:handleChildDragEnd','L2/L3 child drag end fired',{parentId,childrenLen:newChildren.length},'B');
-    // #endregion
+    // Always re-enable outer scroll when a child drag ends
+    childDragActiveRef.current = false;
+    scrollControlRef.current?.unfreeze();
     const expense = structuredClone(categories.expense);
     const income = structuredClone(categories.income);
     const target = catType === 'expense' ? expense : income;
@@ -266,26 +292,15 @@ function CategoryEditScreen() {
       {/* Scrollable content with nested drag support */}
       <NestableScrollContainer
         contentContainerStyle={styles.scrollContent}
-        // #region agent log
-        onScrollBeginDrag={() => {
-          debugLog('category-edit.tsx:NestableScrollContainer','Outer scroll BEGIN drag',{},'A');
-        }}
-        onMomentumScrollBegin={() => {
-          debugLog('category-edit.tsx:NestableScrollContainer','Outer scroll MOMENTUM begin',{},'A');
-        }}
-        // #endregion
       >
+        {/* Bridge to get library's scroll control */}
+        <ScrollContextBridge controlRef={scrollControlRef} />
         {/* ── Level 1: root categories ── */}
         <NestableDraggableFlatList
           data={topLevelItems}
           keyExtractor={(item) => item.id}
           onDragEnd={handleRootDragEnd}
           dragItemOverflow
-          // #region agent log
-          onDragBegin={(index: number) => {
-            debugLog('category-edit.tsx:L1-NestableDraggableFlatList','L1 onDragBegin fired',{index},'B');
-          }}
-          // #endregion
           renderItem={({ item, drag, isActive }: RenderItemParams<Category>) => {
             const hasChildren = !!(item.children && item.children.length > 0);
             const isExpanded = expandedIds.has(item.id);
@@ -302,15 +317,7 @@ function CategoryEditScreen() {
                   {/* Drag handle — disabled for Uncategorized (pinned to top) */}
                   <TouchableOpacity
                     onLongPress={isSystem ? undefined : () => {
-                      // #region agent log
-                      debugLog('category-edit.tsx:L1-DragHandle','L1 onLongPress fired',{itemId:item.id,itemName:item.name},'B');
-                      // #endregion
                       drag();
-                    }}
-                    onPressIn={() => {
-                      // #region agent log
-                      debugLog('category-edit.tsx:L1-DragHandle','L1 onPressIn',{itemId:item.id,itemName:item.name},'E');
-                      // #endregion
                     }}
                     delayLongPress={150}
                     disabled={isActive || isSystem}
@@ -327,7 +334,7 @@ function CategoryEditScreen() {
                   <Text style={styles.l1Icon}>{item.icon ?? '📁'}</Text>
 
                   <View style={styles.info}>
-                    <Text style={[styles.l1Name, { color: theme.text.primary }]}>{item.name}</Text>
+                    <Text style={[styles.l1Name, { color: theme.text.primary }]}>{translateCategoryName(item.name, t)}</Text>
                     {hasChildren && (
                       <Text style={[styles.count, { color: theme.text.tertiary }]}>
                         {item.children!.filter(c => !isUnclassified(c)).length} subcategories
@@ -371,11 +378,8 @@ function CategoryEditScreen() {
                       data={item.children!}
                       keyExtractor={(child) => child.id}
                       onDragEnd={({ data }) => handleChildDragEnd(item.id, data)}
-                      // #region agent log
-                      onDragBegin={(index: number) => {
-                        debugLog('category-edit.tsx:L2-NestableDraggableFlatList','L2 onDragBegin fired',{parentId:item.id,index},'A');
-                      }}
-                      // #endregion
+                      autoscrollSpeed={0}
+                      autoscrollThreshold={0}
                       renderItem={({ item: child, drag: childDrag, isActive: childActive }: RenderItemParams<Category>) => {
                         const childHasKids = !!(child.children && child.children.length > 0);
                         const childExpanded = expandedIds.has(child.id);
@@ -392,15 +396,19 @@ function CategoryEditScreen() {
                               {/* Drag handle — disabled for Uncategorized */}
                               <TouchableOpacity
                                 onLongPress={childIsSystem ? undefined : () => {
-                                  // #region agent log
-                                  debugLog('category-edit.tsx:L2-DragHandle','L2 onLongPress fired',{childId:child.id,childName:child.name},'A');
-                                  // #endregion
+                                  childDragActiveRef.current = true;
                                   childDrag();
                                 }}
                                 onPressIn={() => {
-                                  // #region agent log
-                                  debugLog('category-edit.tsx:L2-DragHandle','L2 onPressIn',{childId:child.id,childName:child.name},'E');
-                                  // #endregion
+                                  if (!childIsSystem) scrollControlRef.current?.freeze();
+                                }}
+                                onPressOut={() => {
+                                  // Only re-enable scroll if no drag is in progress
+                                  // (library handles re-enable in its own onDragEnd)
+                                  if (!childDragActiveRef.current) {
+                                    scrollControlRef.current?.unfreeze();
+                                  }
+                                  childDragActiveRef.current = false;
                                 }}
                                 delayLongPress={150}
                                 disabled={childActive || childIsSystem}
@@ -417,7 +425,7 @@ function CategoryEditScreen() {
                               <Text style={styles.l2Icon}>{child.icon ?? '📁'}</Text>
 
                               <View style={styles.info}>
-                                <Text style={[styles.l2Name, { color: theme.text.primary }]}>{child.name}</Text>
+                                <Text style={[styles.l2Name, { color: theme.text.primary }]}>{translateCategoryName(child.name, t)}</Text>
                                 {childHasKids && (
                                   <Text style={[styles.count, { color: theme.text.tertiary }]}>
                                     {child.children!.filter(c => !isUnclassified(c)).length} subcategories
@@ -460,11 +468,8 @@ function CategoryEditScreen() {
                                   data={child.children!}
                                   keyExtractor={(gc) => gc.id}
                                   onDragEnd={({ data }) => handleChildDragEnd(child.id, data)}
-                                  // #region agent log
-                                  onDragBegin={(index: number) => {
-                                    debugLog('category-edit.tsx:L3-NestableDraggableFlatList','L3 onDragBegin fired',{parentId:child.id,index},'A');
-                                  }}
-                                  // #endregion
+                                  autoscrollSpeed={0}
+                                  autoscrollThreshold={0}
                                   renderItem={({ item: gc, drag: gcDrag, isActive: gcActive }: RenderItemParams<Category>) => {
                                     const gcIsSystem = isUnclassified(gc);
                                     return (
@@ -477,15 +482,17 @@ function CategoryEditScreen() {
                                         {/* Drag handle — disabled for Uncategorized */}
                                         <TouchableOpacity
                                           onLongPress={gcIsSystem ? undefined : () => {
-                                            // #region agent log
-                                            debugLog('category-edit.tsx:L3-DragHandle','L3 onLongPress fired',{gcId:gc.id,gcName:gc.name},'A');
-                                            // #endregion
+                                            childDragActiveRef.current = true;
                                             gcDrag();
                                           }}
                                           onPressIn={() => {
-                                            // #region agent log
-                                            debugLog('category-edit.tsx:L3-DragHandle','L3 onPressIn',{gcId:gc.id,gcName:gc.name},'E');
-                                            // #endregion
+                                            if (!gcIsSystem) scrollControlRef.current?.freeze();
+                                          }}
+                                          onPressOut={() => {
+                                            if (!childDragActiveRef.current) {
+                                              scrollControlRef.current?.unfreeze();
+                                            }
+                                            childDragActiveRef.current = false;
                                           }}
                                           delayLongPress={150}
                                           disabled={gcActive || gcIsSystem}
@@ -502,7 +509,7 @@ function CategoryEditScreen() {
                                         <Text style={styles.l2Icon}>{gc.icon ?? '📁'}</Text>
 
                                         <View style={styles.info}>
-                                          <Text style={[styles.l2Name, { color: theme.text.primary }]}>{gc.name}</Text>
+                                          <Text style={[styles.l2Name, { color: theme.text.primary }]}>{translateCategoryName(gc.name, t)}</Text>
                                         </View>
 
                                         <View style={styles.actions}>
@@ -551,7 +558,7 @@ function CategoryEditScreen() {
 
             {!editingCatId && addParentPath.length > 0 && (
               <Text style={[styles.modalSubtitle, { color: theme.primary }]}>
-                Adding under: {addParentPath.join(' > ')}
+                Adding under: {addParentPath.map(s => translateCategoryName(s, t)).join(' > ')}
               </Text>
             )}
 
@@ -561,7 +568,7 @@ function CategoryEditScreen() {
                 color: theme.text.primary,
                 backgroundColor: theme.background,
               }]}
-              placeholder="Category name"
+              placeholder={t('category.categoryName')}
               placeholderTextColor={theme.text.tertiary}
               value={editName}
               onChangeText={setEditName}
@@ -597,11 +604,11 @@ function CategoryEditScreen() {
 
             <View style={styles.modalActions}>
               <Button
-                title="Cancel"
+                title={t('common.cancel')}
                 variant="ghost"
                 onPress={() => setEditModalVisible(false)}
               />
-              <Button title="Save" onPress={handleSaveCategory} />
+              <Button title={t('common.save')} onPress={handleSaveCategory} />
             </View>
           </View>
         </View>

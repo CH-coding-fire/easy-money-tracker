@@ -36,6 +36,7 @@ import { CalculatorModal } from '../../src/components/CalculatorModal';
 import { useCategories } from '../../src/hooks/useCategories';
 import { useSettings } from '../../src/hooks/useSettings';
 import { useTheme } from '../../src/hooks/useTheme';
+import { useI18n } from '../../src/hooks/useI18n';
 import { useAddTransaction, useAddTransactions } from '../../src/hooks/useTransactions';
 import { useUIStore } from '../../src/store/uiStore';
 import { TransactionType, Transaction } from '../../src/types';
@@ -62,6 +63,7 @@ function AddIncomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const theme = useTheme();
+  const { t } = useI18n();
   const categories = useCategories();
   const settings = useSettings();
   const addMutation = useAddTransaction();
@@ -172,7 +174,7 @@ function AddIncomeScreen() {
     try {
       await addMutation.mutateAsync(tx);
       logger.info(TAG, 'Quick-save transaction added', { id: tx.id });
-      showToast(`Transaction saved! 💡 ${getRandomFinancialQuote()}`, 'success');
+      showToast(t('toast.transactionSaved', { quote: getRandomFinancialQuote() }), 'success');
 
       // Reset form
       reset({ amount: '', title: '', description: '' });
@@ -187,7 +189,7 @@ function AddIncomeScreen() {
       }, 100);
     } catch (err: any) {
       logger.error(TAG, 'Quick-save failed', err);
-      showToast(`Failed to save: ${err.message}`, 'error');
+      showToast(t('toast.failedToSave', { error: err.message }), 'error');
     }
   }
 
@@ -218,7 +220,7 @@ function AddIncomeScreen() {
         }));
         await addBatchMutation.mutateAsync(txs);
         logger.info(TAG, 'Multi-times transactions added', { count: txs.length });
-        showToast(`${txs.length} transactions saved! 💡 ${getRandomFinancialQuote()}`, 'success');
+        showToast(t('toast.transactionsSaved', { count: txs.length, quote: getRandomFinancialQuote() }), 'success');
       } else {
         // One-time: create single transaction
         const tx: Transaction = {
@@ -237,7 +239,7 @@ function AddIncomeScreen() {
         };
         await addMutation.mutateAsync(tx);
         logger.info(TAG, 'Transaction added', { id: tx.id });
-        showToast(`Transaction saved! 💡 ${getRandomFinancialQuote()}`, 'success');
+        showToast(t('toast.transactionSaved', { quote: getRandomFinancialQuote() }), 'success');
       }
 
       // Reset form
@@ -250,7 +252,7 @@ function AddIncomeScreen() {
       setTitleEntered(false);
     } catch (err: any) {
       logger.error(TAG, 'Save failed', err);
-      showToast(`Failed to save: ${err.message}`, 'error');
+      showToast(t('toast.failedToSave', { error: err.message }), 'error');
     }
   }
 
@@ -269,11 +271,11 @@ function AddIncomeScreen() {
         >
           <View style={styles.titleRow}>
             <Ionicons name="arrow-up-circle" size={28} color={theme.success} />
-            <Text style={[styles.screenTitle, { color: theme.text.primary }]}>Add Income</Text>
+            <Text style={[styles.screenTitle, { color: theme.text.primary }]}>{t('add.addIncome')}</Text>
             <View style={{ flex: 1 }} />
             <View style={styles.modeToggle}>
               <Text style={[styles.modeToggleText, { color: isQuickMode ? theme.primary : theme.text.tertiary }]}>
-                {isQuickMode ? '⚡ Quick' : '📝 Detail'}
+                {isQuickMode ? `⚡ ${t('add.quick')}` : `📝 ${t('add.detail')}`}
               </Text>
               <Switch
                 value={isQuickMode}
@@ -288,13 +290,13 @@ function AddIncomeScreen() {
           {/* Row 1: Amount + Currency + Tags */}
           <View style={styles.row}>
             <View style={styles.sectionLabelRow}>
-              <Text style={[styles.sectionLabel, { color: theme.text.secondary, marginBottom: 0 }]}>Amount</Text>
+              <Text style={[styles.sectionLabel, { color: theme.text.secondary, marginBottom: 0 }]}>{t('add.amount')}</Text>
               <TouchableOpacity
                 style={[styles.calculatorBtn, { backgroundColor: `${theme.primary}15`, borderColor: `${theme.primary}40` }]}
                 onPress={() => setCalculatorVisible(true)}
               >
                 <Ionicons name="calculator-outline" size={14} color={theme.primary} />
-                <Text style={[styles.calculatorBtnText, { color: theme.primary }]}>Calc</Text>
+                <Text style={[styles.calculatorBtnText, { color: theme.primary }]}>{t('add.calculate')}</Text>
               </TouchableOpacity>
             </View>
             <View style={styles.amountRow}>
@@ -356,7 +358,7 @@ function AddIncomeScreen() {
           {/* Quick mode: Date before Category */}
           {isQuickMode && (
             <View style={[styles.row, !amountEntered && styles.blurred]}>
-              <Text style={[styles.sectionLabel, { color: theme.text.secondary }]}>Date</Text>
+              <Text style={[styles.sectionLabel, { color: theme.text.secondary }]}>{t('common.date')}</Text>
               <TouchableOpacity
                 style={[styles.dateBtn, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}
                 onPress={() => setShowDatePicker(true)}
@@ -378,7 +380,7 @@ function AddIncomeScreen() {
 
           {/* Category (always shown) */}
           <View style={[styles.row, !amountEntered && styles.blurred]}>
-            <Text style={[styles.sectionLabel, { color: theme.text.secondary }]}>Category</Text>
+            <Text style={[styles.sectionLabel, { color: theme.text.secondary }]}>{t('common.category')}</Text>
             <CategoryPicker
               categories={currentCategories}
               selectedPath={categoryPath}
@@ -402,7 +404,7 @@ function AddIncomeScreen() {
               {/* Date / Starting Date */}
               <View style={[styles.row, !amountEntered && styles.blurred]}>
                 <Text style={[styles.sectionLabel, { color: theme.text.secondary }]}>
-                  {isMultiTimes && multiTimesConfig ? 'Starting Date' : 'Date'}
+                  {isMultiTimes && multiTimesConfig ? t('transaction.startingDate') : t('common.date')}
                 </Text>
                 <TouchableOpacity
                   style={[styles.dateBtn, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}
@@ -430,11 +432,11 @@ function AddIncomeScreen() {
 
               {/* One-time / Multi-times */}
               <View style={[styles.row, !canShowMultiTimes && styles.blurred]}>
-                <Text style={[styles.sectionLabel, { color: theme.text.secondary }]}>Type</Text>
+                <Text style={[styles.sectionLabel, { color: theme.text.secondary }]}>{t('transaction.type')}</Text>
                 <SegmentedControl
                   options={[
-                    { label: 'One-time', value: 'onetime' },
-                    { label: 'Multi-times', value: 'multi' },
+                    { label: t('transaction.oneTime'), value: 'onetime' },
+                    { label: t('transaction.multiTimes'), value: 'multi' },
                   ]}
                   selected={isMultiTimes ? 'multi' : 'onetime'}
                   onSelect={(v) => {
@@ -472,8 +474,8 @@ function AddIncomeScreen() {
                   name="title"
                   render={({ field: { onChange, onBlur, value } }) => (
                     <Input
-                      label="Title (optional)"
-                      placeholder="e.g. Monthly salary"
+                      label={t('transaction.title')}
+                      placeholder={t('transaction.incomePlaceholder')}
                       value={value}
                       onChangeText={(v) => {
                         onChange(v);
@@ -497,8 +499,8 @@ function AddIncomeScreen() {
                   name="description"
                   render={({ field: { onChange, onBlur, value } }) => (
                     <Input
-                      label="Description (optional)"
-                      placeholder="Add notes..."
+                      label={t('transaction.description')}
+                      placeholder={t('transaction.descriptionPlaceholder')}
                       value={value}
                       onChangeText={onChange}
                       onBlur={onBlur}
@@ -520,7 +522,7 @@ function AddIncomeScreen() {
         {/* Floating Save Button */}
         <View style={[styles.floatingBtnContainer, { backgroundColor: `${theme.background}F2` }]}>
           <Button
-            title="Save"
+            title={t('common.save')}
             onPress={handleSubmit(onSubmit)}
             disabled={!canSave}
             loading={addMutation.isPending || addBatchMutation.isPending}
@@ -570,7 +572,7 @@ function AddIncomeScreen() {
           <View style={[styles.modalOverlay, { backgroundColor: theme.overlay }]}>
             <View style={[styles.modalContent, { backgroundColor: theme.cardBackground }]}>
               <View style={styles.modalHeader}>
-                <Text style={[styles.modalTitle, { color: theme.text.primary }]}>Select Currency</Text>
+                <Text style={[styles.modalTitle, { color: theme.text.primary }]}>{t('currency.select')}</Text>
                 <Pressable onPress={() => setCurrencyPickerVisible(false)}>
                   <Ionicons name="close" size={24} color={theme.text.secondary} />
                 </Pressable>
@@ -581,7 +583,7 @@ function AddIncomeScreen() {
                   backgroundColor: theme.background,
                   color: theme.text.primary,
                 }]}
-                placeholder="Search currencies..."
+                placeholder={t('currency.search')}
                 value={currencySearch}
                 onChangeText={setCurrencySearch}
                 placeholderTextColor={theme.text.tertiary}

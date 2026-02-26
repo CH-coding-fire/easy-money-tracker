@@ -14,9 +14,11 @@ import { ErrorBoundary } from '../src/components/ErrorBoundary';
 import { BORDER_RADIUS, FONT_SIZE, SPACING } from '../src/constants/spacing';
 import { useSaveSettings, useSettings } from '../src/hooks/useSettings';
 import { useTheme } from '../src/hooks/useTheme';
+import { useI18n } from '../src/hooks/useI18n';
 import { useCategoryPickerStore } from '../src/store/categoryPickerStore';
 import { Category } from '../src/types';
 import { UNCLASSIFIED_NAME } from '../src/utils/categoryHelpers';
+import { translateCategoryName } from '../src/utils/categoryTranslation';
 
 /** Flatten the category tree into a list of { category, path } tuples for search. */
 function flattenCategoryTree(
@@ -57,6 +59,7 @@ function buildDrillStack(
 function SelectCategoryScreen() {
   const router = useRouter();
   const theme = useTheme();
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const settingsData = useSettings();
   const saveSettings = useSaveSettings();
@@ -101,16 +104,18 @@ function SelectCategoryScreen() {
     [categories],
   );
 
-  // Filter flattened categories by search keyword
+  // Filter flattened categories by search keyword (matches both English and translated names)
   const searchResults = useMemo(() => {
     if (!searchQuery.trim()) return [];
     const q = searchQuery.trim().toLowerCase();
     return allFlatCategories.filter(
       ({ category, path }) =>
         category.name.toLowerCase().includes(q) ||
-        path.join(' > ').toLowerCase().includes(q),
+        translateCategoryName(category.name, t).toLowerCase().includes(q) ||
+        path.join(' > ').toLowerCase().includes(q) ||
+        path.map((s) => translateCategoryName(s, t)).join(' > ').toLowerCase().includes(q),
     );
-  }, [searchQuery, allFlatCategories]);
+  }, [searchQuery, allFlatCategories, t]);
 
   const isSearching = searchQuery.trim().length > 0;
 
@@ -154,7 +159,7 @@ function SelectCategoryScreen() {
           <Ionicons name="arrow-back" size={24} color={theme.text.primary} />
         </TouchableOpacity>
         <Text style={[styles.title, { color: theme.text.primary }]} numberOfLines={1}>
-          {currentPath.length > 0 ? currentPath.join(' > ') : 'Select Category'}
+          {currentPath.length > 0 ? currentPath.map((s) => translateCategoryName(s, t)).join(' > ') : t('category.selectCategory')}
         </Text>
         {/* Toggle auto-focus keyboard */}
         <TouchableOpacity
@@ -163,7 +168,7 @@ function SelectCategoryScreen() {
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
           <Text style={[styles.autoFocusLabel, { color: theme.text.secondary }]}>
-            Popup keyboard
+            {t('category.popupKeyboard')}
           </Text>
           <Ionicons
             name={autoFocus ? 'checkbox' : 'square-outline'}
@@ -193,7 +198,7 @@ function SelectCategoryScreen() {
           <TextInput
             ref={searchInputRef}
             style={[styles.searchInput, { color: theme.text.primary }]}
-            placeholder="Search categories..."
+            placeholder={t('category.searchPlaceholder')}
             placeholderTextColor={theme.text.tertiary}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -233,10 +238,10 @@ function SelectCategoryScreen() {
               >
                 <Text style={styles.categoryIcon}>{item.category.icon ?? '📁'}</Text>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.categoryName, { color: theme.text.primary }]}>{item.category.name}</Text>
+                  <Text style={[styles.categoryName, { color: theme.text.primary }]}>{translateCategoryName(item.category.name, t)}</Text>
                   {item.path.length > 1 && (
                     <Text style={[styles.searchPathHint, { color: theme.text.tertiary }]}>
-                      {item.path.join(' > ')}
+                      {item.path.map((s) => translateCategoryName(s, t)).join(' > ')}
                     </Text>
                   )}
                 </View>
@@ -287,7 +292,7 @@ function SelectCategoryScreen() {
           ListEmptyComponent={() => (
             <View style={styles.emptySearch}>
               <Ionicons name="search-outline" size={36} color={theme.text.tertiary} />
-              <Text style={[styles.emptySearchText, { color: theme.text.tertiary }]}>No categories found</Text>
+              <Text style={[styles.emptySearchText, { color: theme.text.tertiary }]}>{t('category.noCategories')}</Text>
             </View>
           )}
         />
@@ -305,7 +310,7 @@ function SelectCategoryScreen() {
                 onPress={() => handleSelectCategory(item)}
               >
                 <Text style={styles.categoryIcon}>{item.icon ?? '📁'}</Text>
-                <Text style={[styles.categoryName, { color: theme.text.primary }]}>{item.name}</Text>
+                <Text style={[styles.categoryName, { color: theme.text.primary }]}>{translateCategoryName(item.name, t)}</Text>
                 {hasChildren && (
                   <>
                     <TouchableOpacity
