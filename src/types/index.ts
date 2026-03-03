@@ -46,6 +46,7 @@ export interface FxCache {
   lastUpdatedAt: string;
   base: string;
   rates: Record<string, number>;
+  provider?: string; // which API provided the rates, e.g. "open.er-api.com"
 }
 
 // ── Theme ──────────────────────────────────────────────────────────────────

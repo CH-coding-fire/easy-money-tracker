@@ -7,7 +7,7 @@ import { logger } from '../utils/logger';
 import { useState, useCallback } from 'react';
 
 const TAG = 'useFx';
-const STALE_TIME = 3 * 60 * 60 * 1000; // 3 hours
+const STALE_TIME = 6 * 60 * 60 * 1000; // 6 hours
 
 export function useFxRates() {
   const settings = useSettings();

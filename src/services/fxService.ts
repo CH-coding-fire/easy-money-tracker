@@ -1,12 +1,41 @@
-// ── FX rate service using frankfurter.app ──────────────────────────────────
+// ── FX rate service with provider fallback chain ────────────────────────────
 import { FxCache } from '../types';
 import { logger } from '../utils/logger';
 
 const TAG = 'FxService';
-const BASE_URL = 'https://api.frankfurter.app/latest';
-const CACHE_DURATION_MS = 3 * 60 * 60 * 1000; // 3 hours
+const CACHE_DURATION_MS = 6 * 60 * 60 * 1000; // 6 hours
 
-/** Check if the cache is stale (older than 3 hours) */
+interface ProviderResult {
+  base: string;
+  rates: Record<string, number>;
+}
+
+/** Ordered list of FX providers. First success wins. */
+const PROVIDERS: Array<{ name: string; fetch: () => Promise<ProviderResult> }> = [
+  {
+    // Primary: 160+ currencies incl. TWD, HKD, etc. Free, no key required.
+    name: 'open.er-api.com',
+    fetch: async () => {
+      const res = await fetch('https://open.er-api.com/v6/latest/EUR');
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      const data = await res.json();
+      if (data.result !== 'success') throw new Error(`API error: ${data['error-type'] ?? 'unknown'}`);
+      return { base: data.base_code as string, rates: data.rates as Record<string, number> };
+    },
+  },
+  {
+    // Fallback: ECB-based, ~33 major currencies. Free, no key required.
+    name: 'frankfurter.app',
+    fetch: async () => {
+      const res = await fetch('https://api.frankfurter.app/latest');
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      const data = await res.json();
+      return { base: (data.base ?? 'EUR') as string, rates: (data.rates ?? {}) as Record<string, number> };
+    },
+  },
+];
+
+/** Check if the cache is stale (older than 6 hours) */
 export function isFxCacheStale(cache: FxCache): boolean {
   if (!cache.lastUpdatedAt || Object.keys(cache.rates).length === 0) return true;
   const elapsed = Date.now() - new Date(cache.lastUpdatedAt).getTime();
@@ -14,16 +43,15 @@ export function isFxCacheStale(cache: FxCache): boolean {
 }
 
 /**
- * Fetch latest FX rates.
- * If force=false, returns cached data when still fresh (< 3 hours old).
- * If force=true, always hits the API.
- * On failure, returns the existing cache (stale data is better than no data).
+ * Fetch latest FX rates using a provider fallback chain.
+ * If force=false, returns cached data when still fresh (< 6 hours old).
+ * If force=true, always hits the APIs.
+ * On all providers failing, returns the existing cache (stale > nothing).
  */
 export async function fetchFxRates(
   currentCache: FxCache,
   force: boolean = false
-): Promise<{ cache: FxCache; error: boolean }> {
-  // Check if cache is still valid (skip if forced)
+): Promise<{ cache: FxCache; error: boolean; provider?: string }> {
   if (!force && !isFxCacheStale(currentCache)) {
     logger.debug(TAG, 'fetchFxRates: using cached rates', {
       age: Math.round((Date.now() - new Date(currentCache.lastUpdatedAt).getTime()) / 60000) + ' min',
@@ -31,25 +59,28 @@ export async function fetchFxRates(
     return { cache: currentCache, error: false };
   }
 
-  logger.info(TAG, 'fetchFxRates: fetching fresh rates from frankfurter.app');
-  try {
-    const response = await fetch(BASE_URL);
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+  logger.info(TAG, 'fetchFxRates: fetching fresh rates', { providers: PROVIDERS.map(p => p.name) });
+
+  for (const provider of PROVIDERS) {
+    try {
+      logger.info(TAG, `fetchFxRates: trying ${provider.name}`);
+      const { base, rates } = await provider.fetch();
+      const newCache: FxCache = {
+        lastUpdatedAt: new Date().toISOString(),
+        base,
+        rates: { ...rates, [base]: 1 },
+        provider: provider.name,
+      };
+      logger.info(TAG, `fetchFxRates: success via ${provider.name}`, {
+        base: newCache.base,
+        rateCount: Object.keys(newCache.rates).length,
+      });
+      return { cache: newCache, error: false, provider: provider.name };
+    } catch (err) {
+      logger.warn(TAG, `fetchFxRates: ${provider.name} failed, trying next`, err);
     }
-    const data = await response.json();
-    const newCache: FxCache = {
-      lastUpdatedAt: new Date().toISOString(),
-      base: data.base ?? 'EUR',
-      rates: { ...(data.rates ?? {}), [data.base ?? 'EUR']: 1 },
-    };
-    logger.info(TAG, 'fetchFxRates: success', {
-      base: newCache.base,
-      rateCount: Object.keys(newCache.rates).length,
-    });
-    return { cache: newCache, error: false };
-  } catch (err) {
-    logger.error(TAG, 'fetchFxRates: failed, returning stale cache', err);
-    return { cache: currentCache, error: true };
   }
+
+  logger.error(TAG, 'fetchFxRates: all providers failed, returning stale cache');
+  return { cache: currentCache, error: true };
 }
