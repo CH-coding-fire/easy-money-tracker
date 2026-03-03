@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Expo Dev Server",
+      "runtimeExecutable": "cmd.exe",
+      "runtimeArgs": ["/c", "npm", "start"],
+      "port": 8081
+    },
+    {
+      "name": "Expo Dev Server (clear cache)",
+      "runtimeExecutable": "cmd.exe",
+      "runtimeArgs": ["/c", "npm", "run", "start:clear"],
+      "port": 8081
+    }
+  ]
+}

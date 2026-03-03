@@ -520,12 +520,12 @@ function StatisticsScreen() {
                 </Text>
               ) : fxCache.lastUpdatedAt ? (
                 <Text style={[styles.fxInfoText, { color: theme.text.tertiary }]}>
-                  {t('stats.updated')}: {new Date(fxCache.lastUpdatedAt).toLocaleString('en-US', { 
-                    month: 'short', 
-                    day: 'numeric', 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                  })} • Source: frankfurter.app
+                  {t('stats.updated')}: {new Date(fxCache.lastUpdatedAt).toLocaleString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })} • Source: {fxCache.provider ?? 'frankfurter.app'}
                 </Text>
               ) : (
                 <Text style={[styles.fxInfoText, { color: theme.text.tertiary }]}>{t('stats.noFxRates')}</Text>
@@ -558,10 +558,16 @@ function StatisticsScreen() {
             </View>
           </View>
 
-          {/* Expandable FX rates – only currencies involved in transactions */}
+          {/* Expandable FX rates + calculation breakdown */}
           {showFxRates && fxCache.lastUpdatedAt && (
             <View style={[styles.fxRatesBox, { backgroundColor: theme.background }]}>
+              {/* Source & base info */}
               <Text style={[styles.fxRatesTitle, { color: theme.text.tertiary }]}>
+                Source: {fxCache.provider ?? 'frankfurter.app'} · Base: {fxCache.base}
+              </Text>
+
+              {/* FX rates row */}
+              <Text style={[styles.fxRatesTitle, { color: theme.text.tertiary, marginTop: SPACING.xs }]}>
                 {t('stats.rates', { base: statsCurrency })}
               </Text>
               <View style={styles.fxRatesGrid}>
@@ -569,12 +575,11 @@ function StatisticsScreen() {
                   .filter((code) => code !== statsCurrency)
                   .sort()
                   .map((code) => {
-                    // Compute cross-rate: 1 statsCurrency = ? code
                     const crossRate = convertCurrency(1, statsCurrency, code, fxCache);
-                    if (crossRate === 1 && statsCurrency !== code) return null; // no rate available
+                    if (crossRate === 0 && statsCurrency !== code) return null;
                     return (
                       <Text key={code} style={[styles.fxRateItem, { color: theme.text.secondary }]}>
-                        {code}:{'  '}{crossRate.toFixed(4)}
+                        1 {statsCurrency} = {crossRate.toFixed(4)} {code}
                       </Text>
                     );
                   })}
@@ -584,6 +589,30 @@ function StatisticsScreen() {
                   </Text>
                 )}
               </View>
+
+              {/* Calculation breakdown */}
+              {statsMode !== 'balance_line' && originalCurrencyTotals.length > 0 && (
+                <>
+                  <View style={[styles.fxDivider, { backgroundColor: theme.divider }]} />
+                  <Text style={[styles.fxRatesTitle, { color: theme.text.tertiary }]}>Calculation</Text>
+                  {originalCurrencyTotals.map(({ currency, amount }) => {
+                    const converted = convertCurrency(amount, currency, statsCurrency, fxCache);
+                    const isSame = currency === statsCurrency;
+                    return (
+                      <Text key={currency} style={[styles.fxRateItem, { color: theme.text.secondary }]}>
+                        {currency} {amount.toFixed(2)}
+                        {isSame
+                          ? ` = ${statsCurrency} ${converted.toFixed(2)}`
+                          : ` → ${statsCurrency} ${converted.toFixed(2)}`}
+                      </Text>
+                    );
+                  })}
+                  <View style={[styles.fxDivider, { backgroundColor: theme.divider }]} />
+                  <Text style={[styles.fxRateItem, { color: theme.text.primary, fontWeight: '600' }]}>
+                    Total  {statsCurrency} {total.toFixed(2)}
+                  </Text>
+                </>
+              )}
             </View>
           )}
         </Card>
@@ -960,6 +989,10 @@ const styles = StyleSheet.create({
   fxRateItem: {
     fontSize: 9,
     fontFamily: 'monospace',
+  },
+  fxDivider: {
+    height: 1,
+    marginVertical: SPACING.xs,
   },
   totalCard: { 
     marginBottom: SPACING.md, 

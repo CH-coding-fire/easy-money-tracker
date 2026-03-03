@@ -1,4 +1,5 @@
 import { FxCache } from '../types';
+import { logger } from './logger';
 
 /**
  * Convert an amount from one currency to another using cached FX rates.
@@ -19,14 +20,20 @@ export function convertCurrency(
   let amountInBase = amount;
   if (fromCurrency !== base) {
     const fromRate = rates[fromCurrency];
-    if (!fromRate) return amount; // unknown currency, return as-is
+    if (!fromRate) {
+      logger.warn('fxConvert', `Missing rate for fromCurrency: ${fromCurrency} (base: ${base})`);
+      return 0;
+    }
     amountInBase = amount / fromRate;
   }
 
   if (toCurrency === base) return amountInBase;
 
   const toRate = rates[toCurrency];
-  if (!toRate) return amount; // unknown currency, return as-is
+  if (!toRate) {
+    logger.warn('fxConvert', `Missing rate for toCurrency: ${toCurrency} (base: ${base})`);
+    return 0;
+  }
 
   return amountInBase * toRate;
 }
