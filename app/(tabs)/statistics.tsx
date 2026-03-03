@@ -485,7 +485,7 @@ function StatisticsScreen() {
 
             {/* Secondary currency quick-switch tags */}
             <View style={styles.currencyTagsRow}>
-              {[...new Set([settings.mainCurrency, ...settings.secondaryCurrencies, ...settings.frequentCurrencies])]
+              {[...new Set([settings.mainCurrency, ...settings.secondaryCurrencies])]
                 .filter(code => code !== statsCurrency)
                 .slice(0, 4)
                 .map((code) => (
@@ -525,7 +525,7 @@ function StatisticsScreen() {
                     day: 'numeric',
                     hour: '2-digit',
                     minute: '2-digit'
-                  })} • Source: {fxCache.provider ?? 'frankfurter.app'}
+                  })} • Source: {fxCache.provider ?? 'unknown'}
                 </Text>
               ) : (
                 <Text style={[styles.fxInfoText, { color: theme.text.tertiary }]}>{t('stats.noFxRates')}</Text>
@@ -563,7 +563,7 @@ function StatisticsScreen() {
             <View style={[styles.fxRatesBox, { backgroundColor: theme.background }]}>
               {/* Source & base info */}
               <Text style={[styles.fxRatesTitle, { color: theme.text.tertiary }]}>
-                Source: {fxCache.provider ?? 'frankfurter.app'} · Base: {fxCache.base}
+                Source: {fxCache.provider ?? 'unknown'} · Base: {fxCache.base}
               </Text>
 
               {/* FX rates row */}
