@@ -153,7 +153,7 @@ export function CalendarPicker({ visible, value, onSelect, onCancel }: CalendarP
               const todayMark = isToday(day);
               return (
                 <Pressable
-                  key={`day-${day}`}
+                  key={`day-${viewYear}-${viewMonth}-${day}`}
                   style={[
                     styles.cell,
                     { width: cellSize, height: cellSize },
