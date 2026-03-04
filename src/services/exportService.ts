@@ -4,6 +4,7 @@ import * as Sharing from 'expo-sharing';
 import { AppData, ExportData } from '../types';
 import { loadAppData, saveAppData } from './storage';
 import { logger } from '../utils/logger';
+import { ensureUnclassified } from '../utils/categoryHelpers';
 import { nowISO } from '../utils/dateHelpers';
 
 const TAG = 'ExportService';
@@ -33,6 +34,8 @@ export async function exportData(): Promise<void> {
         categoryLevelMode: appData.settings.categoryLevelMode,
         frequentExpenseCategories: appData.settings.frequentExpenseCategories,
         frequentIncomeCategories: appData.settings.frequentIncomeCategories,
+        themeMode: appData.settings.themeMode,
+        autoFocusCategorySearch: appData.settings.autoFocusCategorySearch,
       },
     };
 
@@ -81,7 +84,10 @@ export async function importData(jsonString: string): Promise<AppData> {
     const merged: AppData = {
       schemaVersion: SCHEMA_VERSION,
       transactions: imported.records,
-      categories: imported.categories,
+      categories: {
+        expense: ensureUnclassified(imported.categories.expense),
+        income: ensureUnclassified(imported.categories.income),
+      },
       settings: {
         ...currentData.settings,
         ...imported.settings,

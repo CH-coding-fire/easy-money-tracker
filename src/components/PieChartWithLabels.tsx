@@ -239,7 +239,7 @@ export function PieChartWithLabels({
   const rightLabelWidth = containerWidth - rightLabelStart - 4;
   const leftLabelWidth = leftLabelEnd - 4;
 
-  if (data.length === 0) return null;
+  if (data.length === 0 || total === 0) return null;
 
   return (
     <View style={[styles.container, { width: containerWidth }]}>

@@ -60,16 +60,29 @@ export function CalculatorModal({
         .replace(/÷/g, '/');
 
       // Safely evaluate the expression
-      // Parse tokens: numbers and operators
-      const tokens = jsExpr.match(/(\d+\.?\d*|[+\-*/])/g);
-      if (!tokens) return '';
+      // Tokenize: split into numbers and operators, handling unary minus
+      const rawTokens = jsExpr.match(/(\d+\.?\d*|[+\-*/])/g);
+      if (!rawTokens) return '';
+      // Merge unary minus into the following number (e.g. ["-", "5"] → ["-5"])
+      const tokens: string[] = [];
+      for (let j = 0; j < rawTokens.length; j++) {
+        if (rawTokens[j] === '-' && (j === 0 || '+-*/'.includes(rawTokens[j - 1]))) {
+          if (j + 1 < rawTokens.length && /^\d/.test(rawTokens[j + 1])) {
+            tokens.push('-' + rawTokens[++j]);
+            continue;
+          }
+        }
+        tokens.push(rawTokens[j]);
+      }
+      if (tokens.length === 0) return '';
 
       // First pass: handle * and /
       const stack: (number | string)[] = [];
       for (let i = 0; i < tokens.length; i++) {
         const token = tokens[i];
         if (token === '*' || token === '/') {
-          const prev = stack.pop() as number;
+          const prev = stack.pop();
+          if (typeof prev !== 'number') return '';
           const next = parseFloat(tokens[++i]);
           if (isNaN(next)) return '';
           stack.push(token === '*' ? prev * next : prev / next);

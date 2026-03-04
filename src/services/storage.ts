@@ -10,6 +10,16 @@ import { ensureUnclassified, UNCLASSIFIED_NAME } from '../utils/categoryHelpers'
 const STORAGE_KEY = '@easy_money_tracker';
 const SCHEMA_VERSION = 1;
 const TAG = 'Storage';
+const MAX_STORAGE_SIZE = 8 * 1024 * 1024; // 8 MB warning threshold (AsyncStorage ~10MB limit)
+
+// ── Write mutex — prevents concurrent load→modify→save races ──────────────
+let _writeLock: Promise<void> = Promise.resolve();
+
+function withWriteLock<T>(fn: () => Promise<T>): Promise<T> {
+  const next = _writeLock.then(fn, fn);
+  _writeLock = next.then(() => {}, () => {});
+  return next;
+}
 
 // ── Migration helpers ──────────────────────────────────────────────────────
 
@@ -157,6 +167,12 @@ export async function saveAppData(data: AppData): Promise<void> {
   });
   try {
     const json = JSON.stringify(data);
+    if (json.length > MAX_STORAGE_SIZE) {
+      logger.warn(TAG, 'saveAppData: data size approaching AsyncStorage limit', {
+        dataSize: json.length,
+        limit: MAX_STORAGE_SIZE,
+      });
+    }
     await AsyncStorage.setItem(STORAGE_KEY, json);
     logger.info(TAG, 'saveAppData: success', { dataSize: json.length });
   } catch (err) {
@@ -167,81 +183,94 @@ export async function saveAppData(data: AppData): Promise<void> {
 
 // ── Transaction helpers ────────────────────────────────────────────────────
 
-export async function addTransaction(tx: Transaction): Promise<AppData> {
-  logger.info(TAG, 'addTransaction: start', { id: tx.id, type: tx.type, amount: tx.amount });
-  const data = await loadAppData();
-  data.transactions.push(tx);
-  await saveAppData(data);
-  logger.info(TAG, 'addTransaction: complete', { id: tx.id });
-  return data;
+export function addTransaction(tx: Transaction): Promise<AppData> {
+  return withWriteLock(async () => {
+    logger.info(TAG, 'addTransaction: start', { id: tx.id, type: tx.type, amount: tx.amount });
+    const data = await loadAppData();
+    data.transactions.push(tx);
+    await saveAppData(data);
+    logger.info(TAG, 'addTransaction: complete', { id: tx.id });
+    return data;
+  });
 }
 
-export async function addTransactions(txs: Transaction[]): Promise<AppData> {
-  logger.info(TAG, 'addTransactions: start', { count: txs.length });
-  const data = await loadAppData();
-  data.transactions.push(...txs);
-  await saveAppData(data);
-  logger.info(TAG, 'addTransactions: complete', { count: txs.length, ids: txs.map(t => t.id) });
-  return data;
+export function addTransactions(txs: Transaction[]): Promise<AppData> {
+  return withWriteLock(async () => {
+    logger.info(TAG, 'addTransactions: start', { count: txs.length });
+    const data = await loadAppData();
+    data.transactions.push(...txs);
+    await saveAppData(data);
+    logger.info(TAG, 'addTransactions: complete', { count: txs.length, ids: txs.map(t => t.id) });
+    return data;
+  });
 }
 
-export async function updateTransaction(tx: Transaction): Promise<AppData> {
-  logger.info(TAG, 'updateTransaction: start', { id: tx.id });
-  const data = await loadAppData();
-  const idx = data.transactions.findIndex((t) => t.id === tx.id);
-  if (idx === -1) {
-    logger.error(TAG, 'updateTransaction: not found', { id: tx.id });
-    throw new Error(`Transaction ${tx.id} not found`);
-  }
-  data.transactions[idx] = { ...tx, updatedAt: nowISO() };
-  await saveAppData(data);
-  logger.info(TAG, 'updateTransaction: complete', { id: tx.id });
-  return data;
+export function updateTransaction(tx: Transaction): Promise<AppData> {
+  return withWriteLock(async () => {
+    logger.info(TAG, 'updateTransaction: start', { id: tx.id });
+    const data = await loadAppData();
+    const idx = data.transactions.findIndex((t) => t.id === tx.id);
+    if (idx === -1) {
+      logger.error(TAG, 'updateTransaction: not found', { id: tx.id });
+      throw new Error(`Transaction ${tx.id} not found`);
+    }
+    data.transactions[idx] = { ...tx, updatedAt: nowISO() };
+    await saveAppData(data);
+    logger.info(TAG, 'updateTransaction: complete', { id: tx.id });
+    return data;
+  });
 }
 
-export async function deleteTransaction(id: string): Promise<AppData> {
-  logger.info(TAG, 'deleteTransaction: start', { id });
-  const data = await loadAppData();
-  data.transactions = data.transactions.filter((t) => t.id !== id);
-  await saveAppData(data);
-  logger.info(TAG, 'deleteTransaction: complete', { id });
-  return data;
+export function deleteTransaction(id: string): Promise<AppData> {
+  return withWriteLock(async () => {
+    logger.info(TAG, 'deleteTransaction: start', { id });
+    const data = await loadAppData();
+    data.transactions = data.transactions.filter((t) => t.id !== id);
+    await saveAppData(data);
+    logger.info(TAG, 'deleteTransaction: complete', { id });
+    return data;
+  });
 }
 
-export async function deleteAllTransactions(): Promise<AppData> {
-  logger.warn(TAG, 'deleteAllTransactions: removing all transactions');
-  const data = await loadAppData();
-  const count = data.transactions.length;
-  data.transactions = [];
-  await saveAppData(data);
-  logger.info(TAG, 'deleteAllTransactions: complete', { deletedCount: count });
-  return data;
+export function deleteAllTransactions(): Promise<AppData> {
+  return withWriteLock(async () => {
+    logger.warn(TAG, 'deleteAllTransactions: removing all transactions');
+    const data = await loadAppData();
+    const count = data.transactions.length;
+    data.transactions = [];
+    await saveAppData(data);
+    logger.info(TAG, 'deleteAllTransactions: complete', { deletedCount: count });
+    return data;
+  });
 }
 
 // ── Categories helpers ─────────────────────────────────────────────────────
 
-export async function saveCategories(categories: CategoryGroup): Promise<AppData> {
-  logger.info(TAG, 'saveCategories: start');
-  const data = await loadAppData();
-  // Enforce "Uncategorized" at every level before persisting
-  data.categories = {
-    expense: ensureUnclassified(categories.expense),
-    income: ensureUnclassified(categories.income),
-  };
-  await saveAppData(data);
-  logger.info(TAG, 'saveCategories: complete');
-  return data;
+export function saveCategories(categories: CategoryGroup): Promise<AppData> {
+  return withWriteLock(async () => {
+    logger.info(TAG, 'saveCategories: start');
+    const data = await loadAppData();
+    data.categories = {
+      expense: ensureUnclassified(categories.expense),
+      income: ensureUnclassified(categories.income),
+    };
+    await saveAppData(data);
+    logger.info(TAG, 'saveCategories: complete');
+    return data;
+  });
 }
 
 // ── Settings helpers ───────────────────────────────────────────────────────
 
-export async function saveSettings(partial: Partial<Settings>): Promise<AppData> {
-  logger.info(TAG, 'saveSettings: start', { keys: Object.keys(partial) });
-  const data = await loadAppData();
-  data.settings = { ...data.settings, ...partial };
-  await saveAppData(data);
-  logger.info(TAG, 'saveSettings: complete');
-  return data;
+export function saveSettings(partial: Partial<Settings>): Promise<AppData> {
+  return withWriteLock(async () => {
+    logger.info(TAG, 'saveSettings: start', { keys: Object.keys(partial) });
+    const data = await loadAppData();
+    data.settings = { ...data.settings, ...partial };
+    await saveAppData(data);
+    logger.info(TAG, 'saveSettings: complete');
+    return data;
+  });
 }
 
 // ── Clear all data (debug) ─────────────────────────────────────────────────

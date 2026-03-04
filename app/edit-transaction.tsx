@@ -240,7 +240,10 @@ function EditTransactionScreen() {
               { label: t('add.income'), value: 'income' },
             ]}
             selected={transactionType}
-            onSelect={setTransactionType}
+            onSelect={(type) => {
+              setTransactionType(type);
+              setCategoryPath([]); // Reset category when switching expense↔income
+            }}
           />
 
           {/* Row 1: Amount + Currency + Tags */}
